@@ -1,0 +1,20 @@
+# EcoEvoSim/Project.toml
+name = "EcoEvoSim"
+uuid = "d2a5c1e3-7b6f-4c9a-9f3e-1b2c3d4e5f6a"
+version = "0.1.0"
+authors = ["György Barabás <dysordys@protonmail.com>"]
+license = "MIT"
+keywords = ["ecology", "evolution", "simulation", "ODE"]
+description = "High‑level eco‑evolutionary simulation framework."
+repository = "https://github.com/dysordys/EcoEvoSim.git"
+
+[deps]
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+PropCheck = "ca382230-33be-11e9-0059-d981d03070e4"
+
+[targets]
+test = ["Test", "PropCheck"]
