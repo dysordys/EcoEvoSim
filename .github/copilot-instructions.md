@@ -28,7 +28,7 @@ Integration & dependencies
 - Primary deps in `Project.toml`: `StaticArrays`, `DifferentialEquations` (extras: `Test`, `PropCheck`) — ensure changes keep compatibility with these.
 
 Known gotchas & places to inspect
-- `makeSystemState(..., time::Real = zero(eltype(time)))` — this default expression refers to `time` itself and is likely a bug; be careful when modifying or creating overloads involving default args for `time`.
+- `makeCommunity(..., time::Real = zero(eltype(time)))` — this default expression refers to `time` itself and is likely a bug; be careful when modifying or creating overloads involving default args for `time`.
 - Top-level package `EcoEvoSim` simply re‑exports `EcoEvoCore`: prefer working in `EcoEvoCore` and add tests to `test/`.
 
 How to propose changes for review
@@ -37,7 +37,7 @@ How to propose changes for review
 
 Useful example prompts for the Agent
 - "Refactor `packState` and `unpackState` to be allocation-minimal; provide tests that assert correctness and performance guidelines using small sized SVectors." 
-- "Suggest a safe fix for the default `time` argument in `makeSystemState` and add tests that cover default and explicit time values." 
+- "Suggest a safe fix for the default `time` argument in `makeCommunity` and add tests that cover default and explicit time values." 
 - "Add property tests for `updateState!` using generators in `test/utils.jl` to ensure type stability and correctness across random inputs."
 
 If something is unclear

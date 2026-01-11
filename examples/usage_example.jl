@@ -7,9 +7,9 @@ using EcoEvoSim.EcoEvoCore
 sp1 = makeSpecies([1.0], [10.0, 5.0])
 sp2 = makeSpecies([2.0], [3.0, 7.0])
 
-# Build a SystemState (explicit time to avoid makeSystemState default-time corner case)
+# Build a Community (explicit time to avoid makeCommunity default-time corner case)
 aux = Vector{Population{Float64,0}}()  # typed empty aux vector
-st = makeSystemState([sp1, sp2], aux, 0.0)
+st = makeCommunity([sp1, sp2], aux, 0.0)
 
 println("Initial state:")
 println(st)

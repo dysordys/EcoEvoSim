@@ -5,7 +5,7 @@ using StaticArrays
 using PropCheck
 using Random
 
-export generateSystemState, systemStateGen, sampleSystemState
+export generateCommunity, communityGen, sampleCommunity
 
 
 # Helper to convert a PropCheck generator into an SVector
@@ -16,7 +16,7 @@ function svector_gen(::Type{T}, len::Int, g) where {T}
 end
 
 
-function systemStateGen(;
+function communityGen(;
         traitRange = (-5.0, 5.0),
         densRange  = (0.0, 20.0),
         nSpecies   = 1:5,
@@ -38,8 +38,8 @@ function systemStateGen(;
 
     speciesG  = map(traitSV, densSV) do tr, dn
         EcoEvoCore.Species(
-            EcoEvoCore.Phenotype{Float64,td}(tr),
-            EcoEvoCore.Population{Float64,sc}(dn)
+            EcoEvoCore.Population{Float64,sc}(dn),
+            EcoEvoCore.Phenotype{Float64,td}(tr)
         )
     end
 
@@ -51,18 +51,18 @@ function systemStateGen(;
     timeG = PropCheck.ifloat(timeRange...)
 
     return map(vector(speciesG, ns), vector(auxG, na), timeG) do spVec, auxVec, t
-        EcoEvoCore.SystemState{Float64,td,sc,na}(spVec, auxVec, t)
+        EcoEvoCore.Community{Float64,td,sc,na}(spVec, auxVec, t)
     end
 end
 
-function generateSystemState(; kwargs...)
-    gen = systemStateGen(; kwargs...)
+function generateCommunity(; kwargs...)
+    gen = communityGen(; kwargs...)
     return generate(gen)
 end
 
 # Simple random sampler that does not rely on PropCheck generators. Useful for lightweight
 # randomized tests where shrinking is not required.
-function sampleSystemState(; 
+function sampleCommunity(; 
         traitRange = (-5.0, 5.0),
         densRange  = (0.0, 20.0),
         nSpecies   = 1:5,
@@ -80,7 +80,7 @@ function sampleSystemState(;
     for i in 1:ns
         tr = SVector{td,Float64}(rand(Float64, td) .* (traitRange[2]-traitRange[1]) .+ traitRange[1])
         dn = SVector{sc,Float64}(rand(Float64, sc) .* (densRange[2]-densRange[1]) .+ densRange[1])
-        species[i] = EcoEvoCore.Species(EcoEvoCore.Phenotype{Float64,td}(tr), EcoEvoCore.Population{Float64,sc}(dn))
+        species[i] = EcoEvoCore.Species(EcoEvoCore.Population{Float64,sc}(dn), EcoEvoCore.Phenotype{Float64,td}(tr))
     end
 
     aux = Vector{EcoEvoCore.Population{Float64,na}}(undef, na)
@@ -91,7 +91,7 @@ function sampleSystemState(;
 
     t = rand()*(timeRange[2]-timeRange[1]) + timeRange[1]
 
-    EcoEvoCore.SystemState{Float64,td,sc,na}(species, aux, t)
+    EcoEvoCore.Community{Float64,td,sc,na}(species, aux, t)
 end
 
 

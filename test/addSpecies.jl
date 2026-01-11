@@ -1,9 +1,9 @@
 using Test
 using EcoEvoSim.EcoEvoCore
-using .TestUtils: generateSystemState, systemStateGen
+using .TestUtils: generateCommunity, communityGen
 
 @testset "addSpecies! / removeSpecies!" begin
-    st = generateSystemState(traitDim=2, stageCls=1, nAux=2, nSpecies=2)
+    st = generateCommunity(traitDim=2, stageCls=1, nAux=2, nSpecies=2)
 
     @test nSpecies(st) == 2
     @test totalBiomass(st) ≈ 15.0  # 10 + 5 (default numbers from utils)

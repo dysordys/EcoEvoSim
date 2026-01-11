@@ -5,7 +5,7 @@ using EcoEvoSim.EcoEvoCore         # brings the sub‑module into scope
 
 # Load helper utilities (PropCheck generators, etc.)
 include("utils.jl")
-using .TestUtils: generateSystemState, systemStateGen   # relative import
+using .TestUtils: generateCommunity, communityGen   # relative import
 
 # Include the actual test files
 #include("addSpecies.jl")
