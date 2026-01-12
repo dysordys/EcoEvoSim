@@ -2,9 +2,11 @@ module EcoEvoSim
 
 using StaticArrays
 
-include("EcoEvoCore.jl")
+include("EcoEvoTypes.jl")
+include("EcoEvoMethods.jl")
+include("show.jl")
 
-export EcoEvoCore
+export PopulationSize, Phenotype, Species, Community
 
 
 end # module EcoEvoSim
