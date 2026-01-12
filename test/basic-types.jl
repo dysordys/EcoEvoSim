@@ -5,7 +5,7 @@ using StaticArrays
 
 @testset "tests_of_basic_ecoevo_types" begin
 
-    @testset "testing_PopulationSize_constructor" begin
+    @testset "testing_PopulationSize_constructors" begin
         for _ in 1:100
             T = Float64
             stageClasses = rand(1:10)
@@ -16,6 +16,15 @@ using StaticArrays
         end
         # Test invalid: non-positive StageClasses
         @test_throws ArgumentError PopulationSize{Float64, 0}(SVector{0, Float64}())
+
+        # Outer constructor: accept a regular Vector and convert to SVector
+        for _ in 1:100
+            T = Float64
+            stageClasses = rand(1:10)
+            popsizeVals = rand(Float64, stageClasses)
+            ps = PopulationSize(popsizeVals)
+            @test ps.popsize == SVector{stageClasses, T}(popsizeVals)
+        end
     end
 
 
@@ -93,6 +102,30 @@ using StaticArrays
             @test length(comm.aux) == auxClasses
             @test comm.time == time
         end
+    end
+
+
+    @testset "testing_Community_constructor_from_values" begin
+        for _ in 1:100
+            T = Float64
+            stageClasses = rand(1:3)
+            popvals = rand(T, stageClasses)
+            traitvals = rand(T, stageClasses) # must match length of popvals
+            auxvals = rand(T, rand(0:3))
+
+            comm = Community(popvals, traitvals, auxvals)
+            @test length(comm.species) == 1
+            sp = comm.species[1]
+            @test sp.popsize[1].popsize == SVector{stageClasses, T}(popvals)
+            @test sp.trait[1].trait == SVector{stageClasses, T}(traitvals)
+            @test length(comm.aux) == length(auxvals)
+            for (a,v) in zip(comm.aux, auxvals)
+                @test a.popsize[1] == v
+            end
+        end
+
+        # Invalid: pop and trait must have same length
+        @test_throws ArgumentError Community(rand(Float64, 3), rand(Float64, 4), Float64[])
     end
 
 end
