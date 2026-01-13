@@ -14,6 +14,12 @@ using StaticArrays
             ps = PopulationSize{T, stageClasses}(popsize)
             @test ps.popsize == popsize
         end
+            # Test batch constructor from matrix
+            mat = rand(Float64, 4, 2)
+            pss = PopulationSize(mat)
+            @test length(pss) == 4
+            @test all(ps -> ps isa PopulationSize, pss)
+            @test all(ps -> length(ps.popsize) == 2, pss)
         # Test invalid: non-positive StageClasses
         @test_throws ArgumentError PopulationSize{Float64, 0}(SVector{0, Float64}())
 
@@ -39,7 +45,30 @@ using StaticArrays
         end
         # Test invalid: non-positive TraitDim
         @test_throws ArgumentError Phenotype{Float64, 0}(SVector{0, Float64}())
+            # Test batch constructor from matrix
+            mat = rand(Float64, 5, 3)
+            phs = Phenotype(mat)
+            @test length(phs) == 5
+            @test all(ph -> ph isa Phenotype, phs)
+            @test all(ph -> length(ph.trait) == 3, phs)
     end
+        # Test batch constructor from matrices
+        popMat = rand(Float64, 3, 2)
+        traitMat = rand(Float64, 3, 4)
+        sps = Species(popMat, traitMat)
+        @test length(sps) == 3
+        @test all(sp -> sp isa Species, sps)
+        @test all(sp -> length(sp.popsize[1].popsize) == 2, sps)
+        @test all(sp -> length(sp.trait[1].trait) == 4, sps)
+
+        # Test batch constructor from vectors of vectors
+        popVecs = [rand(Float64, 2) for _ in 1:3]
+        traitVecs = [rand(Float64, 4) for _ in 1:3]
+        sps2 = Species(popVecs, traitVecs)
+        @test length(sps2) == 3
+        @test all(sp -> sp isa Species, sps2)
+        @test all(sp -> length(sp.popsize[1].popsize) == 2, sps2)
+        @test all(sp -> length(sp.trait[1].trait) == 4, sps2)
 
 
     @testset "testing_Species_constructor" begin

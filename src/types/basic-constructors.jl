@@ -1,4 +1,8 @@
-# Alternative outer constructors for basic types
+# Outer constructors for basic types
+
+PopulationSize(mat::AbstractMatrix{T}) where {T<:Real} = [PopulationSize(vec) for vec in eachrow(mat)]
+
+Phenotype(mat::AbstractMatrix{T}) where {T<:Real} = [Phenotype(vec) for vec in eachrow(mat)]
 
 PopulationSize(popsize::T) where {T<:Real} =
     PopulationSize{T, 1}(SVector{1, T}(popsize))
@@ -39,6 +43,38 @@ Species(popsizeVec::AbstractVector{T}, traitVec::AbstractVector{T}) where {T<:Re
 end
 
 
+function Species(popMat::AbstractMatrix{T}, traitMat::AbstractMatrix{T}) where {T<:Real}
+    n_species = size(popMat, 1)
+    n_traits = size(traitMat, 2)
+    n_stages = size(popMat, 2)
+    n_species == size(traitMat, 1) ||
+        throw(ArgumentError("popMat and traitMat must have the same number of rows (species)"))
+    [Species{T, n_stages, n_traits}(
+        [PopulationSize{T, n_stages}(SVector{n_stages, T}(popMat[i, :]))],
+        [Phenotype{T, n_traits}(SVector{n_traits, T}(traitMat[i, :]))]
+    ) for i in 1:n_species]
+end
+
+
+function Species(
+    popVecs::Vector{<:AbstractVector{T}}, traitVecs::Vector{<:AbstractVector{T}}
+) where {T<:Real}
+    n_species = length(popVecs)
+    n_species == length(traitVecs) ||
+        throw(ArgumentError("popVecs and traitVecs must have the same length"))
+    [
+        let
+            pop = PopulationSize(popVecs[i])
+            trait = Phenotype(traitVecs[i])
+            stageClasses = length(pop.popsize)
+            traitDim = length(trait.trait)
+            Species{T, stageClasses, traitDim}([pop], [trait])
+        end
+        for i in 1:n_species
+    ]
+end
+
+
 function Community{T, StageClasses, TraitDim, AuxClasses}(
         species::Vector{Species{T, StageClasses, TraitDim}},
         aux::Vector{PopulationSize{T, 1}}
@@ -68,9 +104,3 @@ function Community(
         [sp], aux, Community{T, stageClasses, traitDim, AuxClasses}[]
     )
 end
-
-
-# Selectors
-species(comm::Community) = comm.species
-aux(comm::Community) = comm.aux
-history(comm::Community) = comm.history
