@@ -37,17 +37,28 @@ end
 struct Community{T<:Real, StageClasses, TraitDim, AuxClasses}
     species :: Vector{Species{T, StageClasses, TraitDim}}
     aux :: Vector{PopulationSize{T, 1}}  # Auxiliary variables (e.g., resources)
-    history :: Vector{Community{T, StageClasses, TraitDim, AuxClasses}} # Past states
     time :: T
     function Community{T, StageClasses, TraitDim, AuxClasses}(
             species::Vector{Species{T, StageClasses, TraitDim}},
             aux::Vector{PopulationSize{T, 1}},
-            history::Vector{Community{T, StageClasses, TraitDim, AuxClasses}},
             time::T = zero(T)
         ) where {T <: Real, StageClasses, TraitDim, AuxClasses}
         StageClasses > 0 || throw(ArgumentError("StageClasses must be positive"))
         TraitDim > 0 || throw(ArgumentError("TraitDim must be positive"))
         AuxClasses >= 0 || throw(ArgumentError("AuxClasses must be non-negative"))
-        new{T, StageClasses, TraitDim, AuxClasses}(species, aux, history, time)
+        new{T, StageClasses, TraitDim, AuxClasses}(species, aux, time)
+    end
+end
+
+
+struct EvoHistory{T<:Real, StageClasses, TraitDim, AuxClasses}
+    history :: Vector{Community{T, StageClasses, TraitDim, AuxClasses}}
+    function EvoHistory{T, StageClasses, TraitDim, AuxClasses}(
+            history::Vector{Community{T, StageClasses, TraitDim, AuxClasses}}
+        ) where {T<:Real, StageClasses, TraitDim, AuxClasses}
+        StageClasses > 0 || throw(ArgumentError("StageClasses must be positive"))
+        TraitDim > 0 || throw(ArgumentError("TraitDim must be positive"))
+        AuxClasses >= 0 || throw(ArgumentError("AuxClasses must be non-negative"))
+        new{T, StageClasses, TraitDim, AuxClasses}(history)
     end
 end

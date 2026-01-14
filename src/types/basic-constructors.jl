@@ -1,8 +1,12 @@
 # Outer constructors for basic types
 
-PopulationSize(mat::AbstractMatrix{T}) where {T<:Real} = [PopulationSize(vec) for vec in eachrow(mat)]
+PopulationSize(mat::AbstractMatrix{T}) where {T<:Real} =
+    [PopulationSize(vec) for vec in eachrow(mat)]
 
-Phenotype(mat::AbstractMatrix{T}) where {T<:Real} = [Phenotype(vec) for vec in eachrow(mat)]
+
+Phenotype(mat::AbstractMatrix{T}) where {T<:Real} =
+    [Phenotype(vec) for vec in eachrow(mat)]
+
 
 PopulationSize(popsize::T) where {T<:Real} =
     PopulationSize{T, 1}(SVector{1, T}(popsize))
@@ -18,6 +22,14 @@ Phenotype(trait::T) where {T<:Real} =
 
 Phenotype(traitVec::AbstractVector{T}) where {T<:Real} =
     Phenotype{T, length(traitVec)}(SVector{length(traitVec), T}(traitVec))
+
+
+function Species(
+        popsize::PopulationSize{T, StageClasses},
+        phenotype::Phenotype{T, TraitDim}
+    ) where {T<:Real, StageClasses, TraitDim}
+    Species{T, StageClasses, TraitDim}([popsize], [phenotype])
+end
 
 
 Species(popsizeVal::T, traitVal::T) where {T<:Real} =
@@ -75,13 +87,13 @@ function Species(
 end
 
 
-function Community{T, StageClasses, TraitDim, AuxClasses}(
+function Community(
         species::Vector{Species{T, StageClasses, TraitDim}},
-        aux::Vector{PopulationSize{T, 1}}
-    ) where {T<:Real, StageClasses, TraitDim, AuxClasses}
-    Community{T, StageClasses, TraitDim, AuxClasses}(
-        species, aux, Community{T, StageClasses, TraitDim, AuxClasses}[]
-    )
+        aux::Vector{PopulationSize{T, 1}},
+        time::T = zero(T)
+    ) where {T<:Real, StageClasses, TraitDim}
+    AuxClasses = length(aux)
+    Community{T, StageClasses, TraitDim, AuxClasses}(species, aux, time)
 end
 
 
@@ -101,6 +113,20 @@ function Community(
     aux = [PopulationSize{T, 1}(SVector{1, T}(a)) for a in auxVals]
     AuxClasses = length(aux)
     Community{T, stageClasses, traitDim, AuxClasses}(
-        [sp], aux, Community{T, stageClasses, traitDim, AuxClasses}[]
+        [sp], aux, zero(T)
     )
+end
+
+
+function EvoHistory(
+        comm::Community{T, StageClasses, TraitDim, AuxClasses}
+    ) where {T<:Real, StageClasses, TraitDim, AuxClasses}
+    EvoHistory{T, StageClasses, TraitDim, AuxClasses}([comm])
+end
+
+
+function EvoHistory(
+        comms::Vector{Community{T, StageClasses, TraitDim, AuxClasses}}
+    ) where {T<:Real, StageClasses, TraitDim, AuxClasses}
+    EvoHistory{T, StageClasses, TraitDim, AuxClasses}(comms)
 end

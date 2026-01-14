@@ -90,6 +90,24 @@ using StaticArrays
     end
 
 
+    @testset "testing_Species_constructor_from_single_objects" begin
+        for _ in 1:100
+            T = Float64
+            stageClasses = rand(1:5)
+            traitDim = rand(1:5)
+            popsize = PopulationSize{T, stageClasses}(SVector{stageClasses, T}(
+                rand(Float64, stageClasses)))
+            phenotype = Phenotype{T, traitDim}(SVector{traitDim, T}(
+                rand(Float64, traitDim)))
+            sp = Species(popsize, phenotype)
+            @test length(sp.popsize) == 1
+            @test length(sp.trait) == 1
+            @test sp.popsize[1] === popsize
+            @test sp.trait[1] === phenotype
+        end
+    end
+
+
     @testset "testing_Community_constructor" begin
         for _ in 1:100
             T = Float64
@@ -103,8 +121,7 @@ using StaticArrays
                     rand(Float64, traitDim)))])
             aux = [PopulationSize{T, 1}(SVector{1, T}(rand(Float64)))
                 for _ in 1:auxClasses]
-            history = Community{T, stageClasses, traitDim, auxClasses}[]
-            comm = Community{T, stageClasses, traitDim, auxClasses}([sp], aux, history)
+            comm = Community{T, stageClasses, traitDim, auxClasses}([sp], aux)
             @test length(comm.species) == 1
             @test length(comm.aux) == auxClasses
         end
@@ -124,12 +141,32 @@ using StaticArrays
                     rand(Float64, traitDim)))])
             aux = [PopulationSize{T, 1}(SVector{1, T}(rand(Float64)))
                 for _ in 1:auxClasses]
-            history = Community{T, stageClasses, traitDim, auxClasses}[]
             comm = Community{T, stageClasses, traitDim, auxClasses}(
-                [sp], aux, history, time)
+                [sp], aux, time)
             @test length(comm.species) == 1
             @test length(comm.aux) == auxClasses
             @test comm.time == time
+        end
+    end
+
+
+    @testset "testing_Community_constructor_with_no_type_info" begin
+        for _ in 1:100
+            T = Float64
+            stageClasses = rand(1:3)
+            traitDim = rand(1:3)
+            auxClasses = rand(0:3)
+            sp = Species{T, stageClasses, traitDim}(
+                [PopulationSize{T, stageClasses}(SVector{stageClasses, T}(
+                    rand(Float64, stageClasses)))],
+                [Phenotype{T, traitDim}(SVector{traitDim, T}(
+                    rand(Float64, traitDim)))])
+            aux = [PopulationSize{T, 1}(SVector{1, T}(rand(Float64)))
+                for _ in 1:auxClasses]
+            comm = Community([sp], aux)
+            @test length(comm.species) == 1
+            @test length(comm.aux) == auxClasses
+            @test comm.time == zero(T)
         end
     end
 
@@ -155,6 +192,53 @@ using StaticArrays
 
         # Invalid: pop and trait must have same length
         @test_throws ArgumentError Community(rand(Float64, 3), rand(Float64, 4), Float64[])
+    end
+
+
+    @testset "testing_EvoHistory_constructor" begin
+        for _ in 1:100
+            T = Float64
+            stageClasses = rand(1:3)
+            traitDim = rand(1:3)
+            auxClasses = rand(0:3)
+            sp = Species{T, stageClasses, traitDim}(
+                [PopulationSize{T, stageClasses}(SVector{stageClasses, T}(
+                    rand(Float64, stageClasses)))],
+                [Phenotype{T, traitDim}(SVector{traitDim, T}(
+                    rand(Float64, traitDim)))])
+            aux = [PopulationSize{T, 1}(SVector{1, T}(rand(Float64)))
+                for _ in 1:auxClasses]
+            comm = Community{T, stageClasses, traitDim, auxClasses}([sp], aux)
+            hist = EvoHistory(comm)
+            @test length(hist.history) == 1
+            @test hist.history[1] === comm
+        end
+    end
+
+
+    @testset "testing_EvoHistory_constructor_from_vector" begin
+        for _ in 1:100
+            T = Float64
+            stageClasses = rand(1:3)
+            traitDim = rand(1:3)
+            auxClasses = rand(0:3)
+            numComms = rand(2:5)
+            comms = Community{T, stageClasses, traitDim, auxClasses}[]
+            for _ in 1:numComms
+                sp = Species{T, stageClasses, traitDim}(
+                    [PopulationSize{T, stageClasses}(SVector{stageClasses, T}(
+                        rand(Float64, stageClasses)))],
+                    [Phenotype{T, traitDim}(SVector{traitDim, T}(
+                        rand(Float64, traitDim)))])
+                aux = [PopulationSize{T, 1}(SVector{1, T}(rand(Float64)))
+                    for _ in 1:auxClasses]
+                comm = Community{T, stageClasses, traitDim, auxClasses}([sp], aux)
+                push!(comms, comm)
+            end
+            hist = EvoHistory(comms)
+            @test length(hist.history) == numComms
+            @test all(hist.history[i] === comms[i] for i in 1:numComms)
+        end
     end
 
 end

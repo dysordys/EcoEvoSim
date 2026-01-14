@@ -1,6 +1,7 @@
 using Test
 using EcoEvoSim
 
-# Include the separate test file
-include("basic-types.jl")
+# Include the separate test files
+include("test-basic-types.jl")
+include("test-basic-selectors.jl")
 
