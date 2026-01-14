@@ -130,3 +130,13 @@ function EvoHistory(
     ) where {T<:Real, StageClasses, TraitDim, AuxClasses}
     EvoHistory{T, StageClasses, TraitDim, AuxClasses}(comms)
 end
+
+
+function emptyCommunity(T::Type{<:Real} = Float64)
+    Community{T, 1, 1, 0}(Species{T, 1, 1}[], PopulationSize{T, 1}[], zero(T))
+end
+
+
+function emptyEvoHistory(T::Type{<:Real} = Float64)
+    EvoHistory{T, 1, 1, 0}([emptyCommunity(T)])
+end

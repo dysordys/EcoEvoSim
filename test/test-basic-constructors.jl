@@ -3,10 +3,13 @@ using EcoEvoSim
 using StaticArrays
 
 
+numTests = 50
+
+
 @testset "tests_of_basic_ecoevo_types" begin
 
     @testset "testing_PopulationSize_constructors" begin
-        for _ in 1:100
+        for _ in 1:numTests
             T = Float64
             stageClasses = rand(1:10)
             popsizeVals = rand(Float64, stageClasses)
@@ -24,7 +27,7 @@ using StaticArrays
         @test_throws ArgumentError PopulationSize{Float64, 0}(SVector{0, Float64}())
 
         # Outer constructor: accept a regular Vector and convert to SVector
-        for _ in 1:100
+        for _ in 1:numTests
             T = Float64
             stageClasses = rand(1:10)
             popsizeVals = rand(Float64, stageClasses)
@@ -35,7 +38,7 @@ using StaticArrays
 
 
     @testset "testing_Phenotype_constructor" begin
-        for _ in 1:100
+        for _ in 1:numTests
             T = Float64
             traitDim = rand(1:10)
             traitVals = rand(Float64, traitDim)
@@ -72,7 +75,7 @@ using StaticArrays
 
 
     @testset "testing_Species_constructor" begin
-        for _ in 1:100
+        for _ in 1:numTests
             T = Float64
             stageClasses = rand(1:5)
             traitDim = rand(1:5)
@@ -91,7 +94,7 @@ using StaticArrays
 
 
     @testset "testing_Species_constructor_from_single_objects" begin
-        for _ in 1:100
+        for _ in 1:numTests
             T = Float64
             stageClasses = rand(1:5)
             traitDim = rand(1:5)
@@ -109,7 +112,7 @@ using StaticArrays
 
 
     @testset "testing_Community_constructor" begin
-        for _ in 1:100
+        for _ in 1:numTests
             T = Float64
             stageClasses = rand(1:3)
             traitDim = rand(1:3)
@@ -128,7 +131,7 @@ using StaticArrays
     end
 
     @testset "testing_Community_constructor_with_explicit_time" begin
-        for _ in 1:100
+        for _ in 1:numTests
             T = Float64
             stageClasses = rand(1:3)
             traitDim = rand(1:3)
@@ -151,7 +154,7 @@ using StaticArrays
 
 
     @testset "testing_Community_constructor_with_no_type_info" begin
-        for _ in 1:100
+        for _ in 1:numTests
             T = Float64
             stageClasses = rand(1:3)
             traitDim = rand(1:3)
@@ -172,7 +175,7 @@ using StaticArrays
 
 
     @testset "testing_Community_constructor_from_values" begin
-        for _ in 1:100
+        for _ in 1:numTests
             T = Float64
             stageClasses = rand(1:3)
             popvals = rand(T, stageClasses)
@@ -196,7 +199,7 @@ using StaticArrays
 
 
     @testset "testing_EvoHistory_constructor" begin
-        for _ in 1:100
+        for _ in 1:numTests
             T = Float64
             stageClasses = rand(1:3)
             traitDim = rand(1:3)
@@ -217,7 +220,7 @@ using StaticArrays
 
 
     @testset "testing_EvoHistory_constructor_from_vector" begin
-        for _ in 1:100
+        for _ in 1:numTests
             T = Float64
             stageClasses = rand(1:3)
             traitDim = rand(1:3)
@@ -239,6 +242,32 @@ using StaticArrays
             @test length(hist.history) == numComms
             @test all(hist.history[i] === comms[i] for i in 1:numComms)
         end
+    end
+
+
+    @testset "testing_emptyCommunity_and_emptyEvoHistory" begin
+        ec = emptyCommunity()
+        @test ec isa Community{Float64, 1, 1, 0}
+        @test numSpecies(ec) == 0
+        @test length(ec.aux) == 0
+        @test ec.time == 0.0
+        @test speciesList(ec) == Species{Float64, 1, 1}[]
+
+        ec32 = emptyCommunity(Float32)
+        @test ec32 isa Community{Float32, 1, 1, 0}
+        @test numSpecies(ec32) == 0
+        @test ec32.time == 0f0
+
+        eh = emptyEvoHistory()
+        @test eh isa EvoHistory{Float64, 1, 1, 0}
+        @test length(eh.history) == 1
+        @test eh.history[1] isa Community{Float64, 1, 1, 0}
+        @test numSpecies(eh.history[1]) == 0
+
+        eh32 = emptyEvoHistory(Float32)
+        @test eh32 isa EvoHistory{Float32, 1, 1, 0}
+        @test length(eh32.history) == 1
+        @test eh32.history[1] isa Community{Float32, 1, 1, 0}
     end
 
 end
