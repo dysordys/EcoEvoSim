@@ -213,3 +213,42 @@ function removeExtinct(comm::Community, extThreshold::Real)
         return removeSpecies(comm, indices_to_remove)
     end
 end
+
+
+
+# Order species by trait component
+
+function orderByTrait(comm::Community, n::Integer)
+    numSp = numSpecies(comm)
+
+    if numSp == 0
+        return comm  # Empty community, nothing to reorder
+    end
+
+    # Validate trait dimension
+    traitDim = length(traits(comm, 1))
+    1 <= n <= traitDim || throw(ArgumentError(
+        "Trait component $n out of bounds (trait space has dimension $traitDim)"
+    ))
+
+    # Extract nth trait component for each species
+    trait_values = Float64[]
+    for i in 1:numSp
+        trait_vec = traits(comm, i)
+        push!(trait_values, trait_vec[n])
+    end
+
+    # Get sorted indices
+    sorted_indices = sortperm(trait_values)
+
+    # Reorder species
+    oldSpecies = speciesList(comm)
+    newSpecies = [oldSpecies[i] for i in sorted_indices]
+
+    Community(newSpecies, auxs(comm), comm.time)
+end
+
+
+function orderByTrait(comm::Community)
+    orderByTrait(comm, 1)
+end

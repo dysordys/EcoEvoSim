@@ -10,8 +10,8 @@ include("types/basic-utils.jl")
 
 export PopulationSize, Phenotype, Species, Community, EvoHistory,
        speciesList, popsizes, traits, auxs, numSpecies, speciesIndices,
-       randomSpecies, weightedRandomSpecies, speciesBelowThreshold,
+       randomSpecies, weightedRandomSpecies, speciesBelowThreshold, removeExtinct,
        traitSpaceDim, addSpecies, removeSpecies, changePopsizes, changeTraits,
-       emptyCommunity, emptyEvoHistory
+       orderByTrait, emptyCommunity, emptyEvoHistory
 
 end # module EcoEvoSim
