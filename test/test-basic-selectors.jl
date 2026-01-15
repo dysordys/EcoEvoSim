@@ -1,6 +1,5 @@
 using Test
 using EcoEvoSim
-using StaticArrays
 
 
 numTests = 50
@@ -11,14 +10,12 @@ numTests = 50
     @testset "testing_species_selector_by_index" begin
         for _ in 1:numTests
             T = Float64
-            stageClasses = rand(1:3)
-            traitDim = rand(1:3)
             auxClasses = rand(0:3)
             numSpecies = rand(1:5)
-            sps = Species{T, stageClasses, traitDim}[]
+            sps = Species{T}[]
             for _ in 1:numSpecies
-                ps = PopulationSize(rand(T, stageClasses))
-                ph = Phenotype(rand(T, traitDim))
+                ps = PopulationSize(rand(T, rand(1:3)))
+                ph = Phenotype(rand(T, rand(1:3)))
                 push!(sps, Species(ps, ph))
             end
             aux = [PopulationSize(rand(T)) for _ in 1:auxClasses]
@@ -35,8 +32,8 @@ numTests = 50
         stageClasses = 2
         traitDim = 2
         auxClasses = 1
-        ps = PopulationSize(rand(T, stageClasses))
-        ph = Phenotype(rand(T, traitDim))
+        ps = PopulationSize(rand(T, rand(1:3)))
+        ph = Phenotype(rand(T, rand(1:3)))
         sp = Species(ps, ph)
         aux = [PopulationSize(rand(T))]
         comm = Community([sp], aux)
@@ -48,14 +45,12 @@ numTests = 50
     @testset "testing_species_selector_by_collection_of_indices" begin
         for _ in 1:numTests
             T = Float64
-            stageClasses = rand(1:3)
-            traitDim = rand(1:3)
             auxClasses = rand(0:3)
             numSpecies = rand(2:5)
-            sps = Species{T, stageClasses, traitDim}[]
+            sps = Species{T}[]
             for _ in 1:numSpecies
-                ps = PopulationSize(rand(T, stageClasses))
-                ph = Phenotype(rand(T, traitDim))
+                ps = PopulationSize(rand(T, rand(1:3)))
+                ph = Phenotype(rand(T, rand(1:3)))
                 push!(sps, Species(ps, ph))
             end
             aux = [PopulationSize(rand(T)) for _ in 1:auxClasses]
@@ -63,9 +58,9 @@ numTests = 50
 
             # Test with empty vector
             result = speciesList(comm, [])
-            @test result == Species{T, stageClasses, traitDim}[]
+            @test result == Species{T}[]
             @test length(result) == 0
-            @test eltype(result) == Species{T, stageClasses, traitDim}
+            @test eltype(result) == Species{T}
 
             # Test with vector of indices (only if we have enough species)
             if numSpecies >= 3
@@ -90,8 +85,8 @@ numTests = 50
         stageClasses = 2
         traitDim = 2
         auxClasses = 1
-        ps = PopulationSize(rand(T, stageClasses))
-        ph = Phenotype(rand(T, traitDim))
+        ps = PopulationSize(rand(T, rand(1:3)))
+        ph = Phenotype(rand(T, rand(1:3)))
         sp = Species(ps, ph)
         aux = [PopulationSize(rand(T))]
         comm = Community([sp], aux)
@@ -106,14 +101,12 @@ numTests = 50
     @testset "testing_popsizes_extractor" begin
         for _ in 1:numTests
             T = Float64
-            stageClasses = rand(1:3)
-            traitDim = rand(1:3)
             auxClasses = rand(0:3)
             numSpecies = rand(1:5)
-            sps = Species{T, stageClasses, traitDim}[]
+            sps = Species{T}[]
             for _ in 1:numSpecies
-                ps = PopulationSize(rand(T, stageClasses))
-                ph = Phenotype(rand(T, traitDim))
+                ps = PopulationSize(rand(T, rand(1:3)))
+                ph = Phenotype(rand(T, rand(1:3)))
                 push!(sps, Species(ps, ph))
             end
             aux = [PopulationSize(rand(T)) for _ in 1:auxClasses]
@@ -123,19 +116,19 @@ numTests = 50
             all_pops = popsizes(comm)
             @test length(all_pops) == numSpecies
             for i in 1:numSpecies
-                @test all_pops[i] === sps[i].popsize
+                @test all_pops[i] === sps[i].popsize[1].popsize
             end
 
             # Test single index
             for i in 1:numSpecies
-                @test popsizes(comm, i) === sps[i].popsize
+                @test popsizes(comm, i) === sps[i].popsize[1].popsize
             end
 
             # Test collection of indices
             if numSpecies >= 2
                 indices = [1, 2]
                 result = popsizes(comm, indices)
-                @test result == [sps[1].popsize, sps[2].popsize]
+                @test result == [sps[1].popsize[1].popsize, sps[2].popsize[1].popsize]
             end
         end
     end
@@ -144,14 +137,12 @@ numTests = 50
     @testset "testing_traits_extractor" begin
         for _ in 1:numTests
             T = Float64
-            stageClasses = rand(1:3)
-            traitDim = rand(1:3)
             auxClasses = rand(0:3)
             numSpecies = rand(1:5)
-            sps = Species{T, stageClasses, traitDim}[]
+            sps = Species{T}[]
             for _ in 1:numSpecies
-                ps = PopulationSize(rand(T, stageClasses))
-                ph = Phenotype(rand(T, traitDim))
+                ps = PopulationSize(rand(T, rand(1:3)))
+                ph = Phenotype(rand(T, rand(1:3)))
                 push!(sps, Species(ps, ph))
             end
             aux = [PopulationSize(rand(T)) for _ in 1:auxClasses]
@@ -161,19 +152,19 @@ numTests = 50
             all_traits = traits(comm)
             @test length(all_traits) == numSpecies
             for i in 1:numSpecies
-                @test all_traits[i] === sps[i].trait
+                @test all_traits[i] === sps[i].trait[1].trait
             end
 
             # Test single index
             for i in 1:numSpecies
-                @test traits(comm, i) === sps[i].trait
+                @test traits(comm, i) === sps[i].trait[1].trait
             end
 
             # Test collection of indices
             if numSpecies >= 2
                 indices = [1, 2]
                 result = traits(comm, indices)
-                @test result == [sps[1].trait, sps[2].trait]
+                @test result == [sps[1].trait[1].trait, sps[2].trait[1].trait]
             end
         end
     end
@@ -182,14 +173,12 @@ numTests = 50
     @testset "testing_aux_selector_by_index" begin
         for _ in 1:numTests
             T = Float64
-            stageClasses = rand(1:3)
-            traitDim = rand(1:3)
             auxClasses = rand(1:5)
             numSpecies = rand(1:5)
-            sps = Species{T, stageClasses, traitDim}[]
+            sps = Species{T}[]
             for _ in 1:numSpecies
-                ps = PopulationSize(rand(T, stageClasses))
-                ph = Phenotype(rand(T, traitDim))
+                ps = PopulationSize(rand(T, rand(1:3)))
+                ph = Phenotype(rand(T, rand(1:3)))
                 push!(sps, Species(ps, ph))
             end
             aux = [PopulationSize(rand(T)) for _ in 1:auxClasses]
@@ -206,8 +195,8 @@ numTests = 50
         stageClasses = 2
         traitDim = 2
         numSpecies = 1
-        ps = PopulationSize(rand(T, stageClasses))
-        ph = Phenotype(rand(T, traitDim))
+        ps = PopulationSize(rand(T, rand(1:3)))
+        ph = Phenotype(rand(T, rand(1:3)))
         sp = Species(ps, ph)
         aux = [PopulationSize(rand(T))]
         comm = Community([sp], aux)
@@ -219,14 +208,12 @@ numTests = 50
     @testset "testing_aux_selector_by_collection_of_indices" begin
         for _ in 1:numTests
             T = Float64
-            stageClasses = rand(1:3)
-            traitDim = rand(1:3)
             auxClasses = rand(2:5)
             numSpecies = rand(1:5)
-            sps = Species{T, stageClasses, traitDim}[]
+            sps = Species{T}[]
             for _ in 1:numSpecies
-                ps = PopulationSize(rand(T, stageClasses))
-                ph = Phenotype(rand(T, traitDim))
+                ps = PopulationSize(rand(T, rand(1:3)))
+                ph = Phenotype(rand(T, rand(1:3)))
                 push!(sps, Species(ps, ph))
             end
             aux = [PopulationSize(rand(T)) for _ in 1:auxClasses]
@@ -234,9 +221,9 @@ numTests = 50
 
             # Test with empty vector
             result = auxs(comm, [])
-            @test result == PopulationSize{T, 1}[]
+            @test result == PopulationSize{T}[]
             @test length(result) == 0
-            @test eltype(result) == PopulationSize{T, 1}
+            @test eltype(result) == PopulationSize{T}
 
             # Test with vector of indices (only if we have enough aux)
             if auxClasses >= 3
@@ -261,8 +248,8 @@ numTests = 50
         stageClasses = 2
         traitDim = 2
         numSpecies = 1
-        ps = PopulationSize(rand(T, stageClasses))
-        ph = Phenotype(rand(T, traitDim))
+        ps = PopulationSize(rand(T, rand(1:3)))
+        ph = Phenotype(rand(T, rand(1:3)))
         sp = Species(ps, ph)
         aux = [PopulationSize(rand(T))]
         comm = Community([sp], aux)
@@ -277,14 +264,12 @@ numTests = 50
     @testset "testing_numSpecies" begin
         for _ in 1:numTests
             T = Float64
-            stageClasses = rand(1:3)
-            traitDim = rand(1:3)
             auxClasses = rand(0:3)
             numSpecies_expected = rand(1:5)
-            sps = Species{T, stageClasses, traitDim}[]
+            sps = Species{T}[]
             for _ in 1:numSpecies_expected
-                ps = PopulationSize(rand(T, stageClasses))
-                ph = Phenotype(rand(T, traitDim))
+                ps = PopulationSize(rand(T, rand(1:3)))
+                ph = Phenotype(rand(T, rand(1:3)))
                 push!(sps, Species(ps, ph))
             end
             aux = [PopulationSize(rand(T)) for _ in 1:auxClasses]
@@ -299,14 +284,12 @@ numTests = 50
     @testset "testing_speciesIndices" begin
         for _ in 1:numTests
             T = Float64
-            stageClasses = rand(1:3)
-            traitDim = rand(1:3)
             auxClasses = rand(0:3)
             numSpecies_expected = rand(1:5)
-            sps = Species{T, stageClasses, traitDim}[]
+            sps = Species{T}[]
             for _ in 1:numSpecies_expected
-                ps = PopulationSize(rand(T, stageClasses))
-                ph = Phenotype(rand(T, traitDim))
+                ps = PopulationSize(rand(T, rand(1:3)))
+                ph = Phenotype(rand(T, rand(1:3)))
                 push!(sps, Species(ps, ph))
             end
             aux = [PopulationSize(rand(T)) for _ in 1:auxClasses]

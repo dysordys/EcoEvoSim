@@ -1,6 +1,5 @@
 using Test
 using EcoEvoSim
-using StaticArrays
 
 
 numTests = 50
@@ -13,8 +12,8 @@ numTests = 50
             T = Float64
             stageClasses = rand(1:10)
             popsizeVals = rand(Float64, stageClasses)
-            popsize = SVector{stageClasses, T}(popsizeVals)
-            ps = PopulationSize{T, stageClasses}(popsize)
+            popsize = Vector{T}(popsizeVals)
+            ps = PopulationSize{T}(popsize)
             @test ps.popsize == popsize
         end
             # Test batch constructor from matrix
@@ -24,7 +23,7 @@ numTests = 50
             @test all(ps -> ps isa PopulationSize, pss)
             @test all(ps -> length(ps.popsize) == 2, pss)
         # Test invalid: non-positive StageClasses
-        @test_throws ArgumentError PopulationSize{Float64, 0}(SVector{0, Float64}())
+        @test_throws ArgumentError PopulationSize{Float64}(Float64[])
 
         # Outer constructor: accept a regular Vector and convert to SVector
         for _ in 1:numTests
@@ -32,7 +31,7 @@ numTests = 50
             stageClasses = rand(1:10)
             popsizeVals = rand(Float64, stageClasses)
             ps = PopulationSize(popsizeVals)
-            @test ps.popsize == SVector{stageClasses, T}(popsizeVals)
+            @test ps.popsize == Vector{T}(popsizeVals)
         end
     end
 
@@ -42,12 +41,12 @@ numTests = 50
             T = Float64
             traitDim = rand(1:10)
             traitVals = rand(Float64, traitDim)
-            trait = SVector{traitDim, T}(traitVals)
-            ph = Phenotype{T, traitDim}(trait)
+            trait = Vector{T}(traitVals)
+            ph = Phenotype{T}(trait)
             @test ph.trait == trait
         end
         # Test invalid: non-positive TraitDim
-        @test_throws ArgumentError Phenotype{Float64, 0}(SVector{0, Float64}())
+        @test_throws ArgumentError Phenotype{Float64}(Float64[])
             # Test batch constructor from matrix
             mat = rand(Float64, 5, 3)
             phs = Phenotype(mat)
@@ -80,13 +79,13 @@ numTests = 50
             stageClasses = rand(1:5)
             traitDim = rand(1:5)
             num_instances = rand(1:3)
-            popsize = [PopulationSize{T, stageClasses}(SVector{stageClasses, T}(
+            popsize = [PopulationSize{T}(Vector{T}(
                 rand(Float64, stageClasses)
             )) for _ in 1:num_instances]
-            trait = [Phenotype{T, traitDim}(SVector{traitDim, T}(
+            trait = [Phenotype{T}(Vector{T}(
                 rand(Float64, traitDim)
             )) for _ in 1:num_instances]
-            sp = Species{T, stageClasses, traitDim}(popsize, trait)
+            sp = Species{T}(popsize, trait)
             @test length(sp.popsize) == num_instances
             @test length(sp.trait) == num_instances
         end
@@ -98,9 +97,9 @@ numTests = 50
             T = Float64
             stageClasses = rand(1:5)
             traitDim = rand(1:5)
-            popsize = PopulationSize{T, stageClasses}(SVector{stageClasses, T}(
+            popsize = PopulationSize{T}(Vector{T}(
                 rand(Float64, stageClasses)))
-            phenotype = Phenotype{T, traitDim}(SVector{traitDim, T}(
+            phenotype = Phenotype{T}(Vector{T}(
                 rand(Float64, traitDim)))
             sp = Species(popsize, phenotype)
             @test length(sp.popsize) == 1
@@ -117,14 +116,14 @@ numTests = 50
             stageClasses = rand(1:3)
             traitDim = rand(1:3)
             auxClasses = rand(0:3)
-            sp = Species{T, stageClasses, traitDim}(
-                [PopulationSize{T, stageClasses}(SVector{stageClasses, T}(
+            sp = Species{T}(
+                [PopulationSize{T}(Vector{T}(
                     rand(Float64, stageClasses)))],
-                [Phenotype{T, traitDim}(SVector{traitDim, T}(
+                [Phenotype{T}(Vector{T}(
                     rand(Float64, traitDim)))])
-            aux = [PopulationSize{T, 1}(SVector{1, T}(rand(Float64)))
+            aux = [PopulationSize{T}([rand(Float64)])
                 for _ in 1:auxClasses]
-            comm = Community{T, stageClasses, traitDim, auxClasses}([sp], aux)
+            comm = Community{T, auxClasses}([sp], aux)
             @test length(comm.species) == 1
             @test length(comm.aux) == auxClasses
         end
@@ -137,14 +136,14 @@ numTests = 50
             traitDim = rand(1:3)
             auxClasses = rand(0:3)
             time = rand(Float64)
-            sp = Species{T, stageClasses, traitDim}(
-                [PopulationSize{T, stageClasses}(SVector{stageClasses, T}(
+            sp = Species{T}(
+                [PopulationSize{T}(Vector{T}(
                     rand(Float64, stageClasses)))],
-                [Phenotype{T, traitDim}(SVector{traitDim, T}(
+                [Phenotype{T}(Vector{T}(
                     rand(Float64, traitDim)))])
-            aux = [PopulationSize{T, 1}(SVector{1, T}(rand(Float64)))
+            aux = [PopulationSize{T}([rand(Float64)])
                 for _ in 1:auxClasses]
-            comm = Community{T, stageClasses, traitDim, auxClasses}(
+            comm = Community{T, auxClasses}(
                 [sp], aux, time)
             @test length(comm.species) == 1
             @test length(comm.aux) == auxClasses
@@ -159,12 +158,12 @@ numTests = 50
             stageClasses = rand(1:3)
             traitDim = rand(1:3)
             auxClasses = rand(0:3)
-            sp = Species{T, stageClasses, traitDim}(
-                [PopulationSize{T, stageClasses}(SVector{stageClasses, T}(
+            sp = Species{T}(
+                [PopulationSize{T}(Vector{T}(
                     rand(Float64, stageClasses)))],
-                [Phenotype{T, traitDim}(SVector{traitDim, T}(
+                [Phenotype{T}(Vector{T}(
                     rand(Float64, traitDim)))])
-            aux = [PopulationSize{T, 1}(SVector{1, T}(rand(Float64)))
+            aux = [PopulationSize{T}([rand(Float64)])
                 for _ in 1:auxClasses]
             comm = Community([sp], aux)
             @test length(comm.species) == 1
@@ -185,8 +184,8 @@ numTests = 50
             comm = Community(popvals, traitvals, auxvals)
             @test length(comm.species) == 1
             sp = comm.species[1]
-            @test sp.popsize[1].popsize == SVector{stageClasses, T}(popvals)
-            @test sp.trait[1].trait == SVector{stageClasses, T}(traitvals)
+            @test sp.popsize[1].popsize == Vector{T}(popvals)
+            @test sp.trait[1].trait == Vector{T}(traitvals)
             @test length(comm.aux) == length(auxvals)
             for (a,v) in zip(comm.aux, auxvals)
                 @test a.popsize[1] == v
@@ -204,14 +203,14 @@ numTests = 50
             stageClasses = rand(1:3)
             traitDim = rand(1:3)
             auxClasses = rand(0:3)
-            sp = Species{T, stageClasses, traitDim}(
-                [PopulationSize{T, stageClasses}(SVector{stageClasses, T}(
+            sp = Species{T}(
+                [PopulationSize{T}(Vector{T}(
                     rand(Float64, stageClasses)))],
-                [Phenotype{T, traitDim}(SVector{traitDim, T}(
+                [Phenotype{T}(Vector{T}(
                     rand(Float64, traitDim)))])
-            aux = [PopulationSize{T, 1}(SVector{1, T}(rand(Float64)))
+            aux = [PopulationSize{T}([rand(Float64)])
                 for _ in 1:auxClasses]
-            comm = Community{T, stageClasses, traitDim, auxClasses}([sp], aux)
+            comm = Community{T, auxClasses}([sp], aux)
             hist = EvoHistory(comm)
             @test length(hist.history) == 1
             @test hist.history[1] === comm
@@ -226,16 +225,16 @@ numTests = 50
             traitDim = rand(1:3)
             auxClasses = rand(0:3)
             numComms = rand(2:5)
-            comms = Community{T, stageClasses, traitDim, auxClasses}[]
+            comms = Community{T, auxClasses}[]
             for _ in 1:numComms
-                sp = Species{T, stageClasses, traitDim}(
-                    [PopulationSize{T, stageClasses}(SVector{stageClasses, T}(
+                sp = Species{T}(
+                    [PopulationSize{T}(Vector{T}(
                         rand(Float64, stageClasses)))],
-                    [Phenotype{T, traitDim}(SVector{traitDim, T}(
+                    [Phenotype{T}(Vector{T}(
                         rand(Float64, traitDim)))])
-                aux = [PopulationSize{T, 1}(SVector{1, T}(rand(Float64)))
+                aux = [PopulationSize{T}([rand(Float64)])
                     for _ in 1:auxClasses]
-                comm = Community{T, stageClasses, traitDim, auxClasses}([sp], aux)
+                comm = Community{T, auxClasses}([sp], aux)
                 push!(comms, comm)
             end
             hist = EvoHistory(comms)
@@ -247,27 +246,27 @@ numTests = 50
 
     @testset "testing_emptyCommunity_and_emptyEvoHistory" begin
         ec = emptyCommunity()
-        @test ec isa Community{Float64, 1, 1, 0}
+        @test ec isa Community{Float64, 0}
         @test numSpecies(ec) == 0
         @test length(ec.aux) == 0
         @test ec.time == 0.0
-        @test speciesList(ec) == Species{Float64, 1, 1}[]
+        @test speciesList(ec) == Species{Float64}[]
 
         ec32 = emptyCommunity(Float32)
-        @test ec32 isa Community{Float32, 1, 1, 0}
+        @test ec32 isa Community{Float32, 0}
         @test numSpecies(ec32) == 0
         @test ec32.time == 0f0
 
         eh = emptyEvoHistory()
-        @test eh isa EvoHistory{Float64, 1, 1, 0}
+        @test eh isa EvoHistory{Float64, 0}
         @test length(eh.history) == 1
-        @test eh.history[1] isa Community{Float64, 1, 1, 0}
+        @test eh.history[1] isa Community{Float64, 0}
         @test numSpecies(eh.history[1]) == 0
 
         eh32 = emptyEvoHistory(Float32)
-        @test eh32 isa EvoHistory{Float32, 1, 1, 0}
+        @test eh32 isa EvoHistory{Float32, 0}
         @test length(eh32.history) == 1
-        @test eh32.history[1] isa Community{Float32, 1, 1, 0}
+        @test eh32.history[1] isa Community{Float32, 0}
     end
 
 end

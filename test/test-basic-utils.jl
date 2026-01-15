@@ -1,6 +1,5 @@
 using Test
 using EcoEvoSim
-using StaticArrays
 
 
 numTests = 50
@@ -11,22 +10,20 @@ numTests = 50
     @testset "testing_addSpecies_single_species" begin
         for _ in 1:numTests
             T = Float64
-            stageClasses = rand(1:3)
-            traitDim = rand(1:3)
             auxClasses = rand(0:3)
             numSpeciesInit = rand(1:5)
-            sps = Species{T, stageClasses, traitDim}[]
+            sps = Species{T}[]
             for _ in 1:numSpeciesInit
-                ps = PopulationSize(rand(T, stageClasses))
-                ph = Phenotype(rand(T, traitDim))
+                ps = PopulationSize(rand(T, rand(1:3)))
+                ph = Phenotype(rand(T, rand(1:3)))
                 push!(sps, Species(ps, ph))
             end
             aux = [PopulationSize(rand(T)) for _ in 1:auxClasses]
             comm = Community(sps, aux)
 
             # Create a new species to add
-            new_ps = PopulationSize(rand(T, stageClasses))
-            new_ph = Phenotype(rand(T, traitDim))
+            new_ps = PopulationSize(rand(T, rand(1:3)))
+            new_ph = Phenotype(rand(T, rand(1:3)))
             new_sp = Species(new_ps, new_ph)
 
             # Test addSpecies with different argument orders
@@ -44,14 +41,12 @@ numTests = 50
     @testset "testing_addSpecies_multiple_species" begin
         for _ in 1:numTests
             T = Float64
-            stageClasses = rand(1:3)
-            traitDim = rand(1:3)
             auxClasses = rand(0:3)
             numSpeciesInit = rand(1:5)
-            sps = Species{T, stageClasses, traitDim}[]
+            sps = Species{T}[]
             for _ in 1:numSpeciesInit
-                ps = PopulationSize(rand(T, stageClasses))
-                ph = Phenotype(rand(T, traitDim))
+                ps = PopulationSize(rand(T, rand(1:3)))
+                ph = Phenotype(rand(T, rand(1:3)))
                 push!(sps, Species(ps, ph))
             end
             aux = [PopulationSize(rand(T)) for _ in 1:auxClasses]
@@ -59,10 +54,10 @@ numTests = 50
 
             # Create multiple new species to add
             numNew = rand(1:3)
-            new_sps = Species{T, stageClasses, traitDim}[]
+            new_sps = Species{T}[]
             for _ in 1:numNew
-                ps = PopulationSize(rand(T, stageClasses))
-                ph = Phenotype(rand(T, traitDim))
+                ps = PopulationSize(rand(T, rand(1:3)))
+                ph = Phenotype(rand(T, rand(1:3)))
                 push!(new_sps, Species(ps, ph))
             end
 
@@ -81,14 +76,12 @@ numTests = 50
     @testset "testing_addSpecies_preserves_auxiliaries_and_time" begin
         for _ in 1:numTests
             T = Float64
-            stageClasses = rand(1:3)
-            traitDim = rand(1:3)
             auxClasses = rand(1:3)
             numSpecies = rand(1:5)
-            sps = Species{T, stageClasses, traitDim}[]
+            sps = Species{T}[]
             for _ in 1:numSpecies
-                ps = PopulationSize(rand(T, stageClasses))
-                ph = Phenotype(rand(T, traitDim))
+                ps = PopulationSize(rand(T, rand(1:3)))
+                ph = Phenotype(rand(T, rand(1:3)))
                 push!(sps, Species(ps, ph))
             end
             aux = [PopulationSize(rand(T)) for _ in 1:auxClasses]
@@ -96,8 +89,8 @@ numTests = 50
             comm = Community(sps, aux, time)
 
             # Create a new species to add
-            new_ps = PopulationSize(rand(T, stageClasses))
-            new_ph = Phenotype(rand(T, traitDim))
+            new_ps = PopulationSize(rand(T, rand(1:3)))
+            new_ph = Phenotype(rand(T, rand(1:3)))
             new_sp = Species(new_ps, new_ph)
 
             comm_new = addSpecies(comm, new_sp)

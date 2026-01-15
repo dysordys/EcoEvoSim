@@ -1,5 +1,3 @@
-# Outer constructors for basic types
-
 PopulationSize(mat::AbstractMatrix{T}) where {T<:Real} =
     [PopulationSize(vec) for vec in eachrow(mat)]
 
@@ -9,61 +7,52 @@ Phenotype(mat::AbstractMatrix{T}) where {T<:Real} =
 
 
 PopulationSize(popsize::T) where {T<:Real} =
-    PopulationSize{T, 1}(SVector{1, T}(popsize))
+    PopulationSize{T}([popsize])
 
 
 PopulationSize(popsizeVec::AbstractVector{T}) where {T<:Real} =
-    PopulationSize{T, length(popsizeVec)}(SVector{length(popsizeVec), T}(popsizeVec))
+    PopulationSize{T}(Vector{T}(popsizeVec))
 
 
 Phenotype(trait::T) where {T<:Real} =
-    Phenotype{T, 1}(SVector{1, T}(trait))
+    Phenotype{T}([trait])
 
 
 Phenotype(traitVec::AbstractVector{T}) where {T<:Real} =
-    Phenotype{T, length(traitVec)}(SVector{length(traitVec), T}(traitVec))
+    Phenotype{T}(Vector{T}(traitVec))
 
 
 function Species(
-        popsize::PopulationSize{T, StageClasses},
-        phenotype::Phenotype{T, TraitDim}
-    ) where {T<:Real, StageClasses, TraitDim}
-    Species{T, StageClasses, TraitDim}([popsize], [phenotype])
+        popsize::PopulationSize{T},
+        phenotype::Phenotype{T}
+    ) where {T<:Real}
+    Species{T}([popsize], [phenotype])
 end
 
 
 Species(popsizeVal::T, traitVal::T) where {T<:Real} =
-    Species{T, 1, 1}([PopulationSize(popsizeVal)], [Phenotype(traitVal)])
+    Species{T}([PopulationSize(popsizeVal)], [Phenotype(traitVal)])
 
 
-Species(popsizeVec::AbstractVector{T}, traitVal::T) where {T<:Real} = begin
-    stageClasses = length(popsizeVec[1].popsize)
-    Species{T, stageClasses, 1}(popsizeVec, traitVal)
-end
+Species(popsizeVec::AbstractVector{T}, traitVal::T) where {T<:Real} =
+    Species{T}(popsizeVec, traitVal)
 
 
-Species(popsizeVal::T, traitVec::AbstractVector{T}) where {T<:Real} = begin
-    traitDim = length(traitVec[1].trait)
-    Species{T, 1, traitDim}(popsizeVal, traitVec)
-end
+Species(popsizeVal::T, traitVec::AbstractVector{T}) where {T<:Real} =
+    Species{T}(popsizeVal, traitVec)
 
 
-Species(popsizeVec::AbstractVector{T}, traitVec::AbstractVector{T}) where {T<:Real} = begin
-    stageClasses = length(popsizeVec[1].popsize)
-    traitDim = length(traitVec[1].trait)
-    Species{T, stageClasses, traitDim}(popsizeVec, traitVec)
-end
+Species(popsizeVec::AbstractVector{T}, traitVec::AbstractVector{T}) where {T<:Real} =
+    Species{T}(popsizeVec, traitVec)
 
 
 function Species(popMat::AbstractMatrix{T}, traitMat::AbstractMatrix{T}) where {T<:Real}
     n_species = size(popMat, 1)
-    n_traits = size(traitMat, 2)
-    n_stages = size(popMat, 2)
     n_species == size(traitMat, 1) ||
         throw(ArgumentError("popMat and traitMat must have the same number of rows (species)"))
-    [Species{T, n_stages, n_traits}(
-        [PopulationSize{T, n_stages}(SVector{n_stages, T}(popMat[i, :]))],
-        [Phenotype{T, n_traits}(SVector{n_traits, T}(traitMat[i, :]))]
+    [Species{T}(
+        [PopulationSize{T}(Vector{T}(popMat[i, :]))],
+        [Phenotype{T}(Vector{T}(traitMat[i, :]))]
     ) for i in 1:n_species]
 end
 
@@ -75,25 +64,19 @@ function Species(
     n_species == length(traitVecs) ||
         throw(ArgumentError("popVecs and traitVecs must have the same length"))
     [
-        let
-            pop = PopulationSize(popVecs[i])
-            trait = Phenotype(traitVecs[i])
-            stageClasses = length(pop.popsize)
-            traitDim = length(trait.trait)
-            Species{T, stageClasses, traitDim}([pop], [trait])
-        end
+        Species{T}([PopulationSize(popVecs[i])], [Phenotype(traitVecs[i])])
         for i in 1:n_species
     ]
 end
 
 
 function Community(
-        species::Vector{Species{T, StageClasses, TraitDim}},
-        aux::Vector{PopulationSize{T, 1}},
+        species::Vector{Species{T}},
+        aux::Vector{PopulationSize{T}},
         time::T = zero(T)
-    ) where {T<:Real, StageClasses, TraitDim}
+    ) where {T<:Real}
     AuxClasses = length(aux)
-    Community{T, StageClasses, TraitDim, AuxClasses}(species, aux, time)
+    Community{T, AuxClasses}(species, aux, time)
 end
 
 
@@ -104,39 +87,37 @@ function Community(
     ) where {T<:Real}
     length(popVals) == length(traitVals) ||
         throw(ArgumentError("`popVals` and `traitVals` must have the same length"))
-    stageClasses = length(popVals)
-    traitDim = length(traitVals)
-    sp = Species{T, stageClasses, traitDim}(
-        [PopulationSize{T, stageClasses}(SVector{stageClasses, T}(popVals))],
-        [Phenotype{T, traitDim}(SVector{traitDim, T}(traitVals))]
+    sp = Species{T}(
+        [PopulationSize{T}(Vector{T}(popVals))],
+        [Phenotype{T}(Vector{T}(traitVals))]
     )
-    aux = [PopulationSize{T, 1}(SVector{1, T}(a)) for a in auxVals]
+    aux = [PopulationSize{T}([a]) for a in auxVals]
     AuxClasses = length(aux)
-    Community{T, stageClasses, traitDim, AuxClasses}(
+    Community{T, AuxClasses}(
         [sp], aux, zero(T)
     )
 end
 
 
 function EvoHistory(
-        comm::Community{T, StageClasses, TraitDim, AuxClasses}
-    ) where {T<:Real, StageClasses, TraitDim, AuxClasses}
-    EvoHistory{T, StageClasses, TraitDim, AuxClasses}([comm])
+        comm::Community{T, AuxClasses}
+    ) where {T<:Real, AuxClasses}
+    EvoHistory{T, AuxClasses}([comm])
 end
 
 
 function EvoHistory(
-        comms::Vector{Community{T, StageClasses, TraitDim, AuxClasses}}
-    ) where {T<:Real, StageClasses, TraitDim, AuxClasses}
-    EvoHistory{T, StageClasses, TraitDim, AuxClasses}(comms)
+        comms::Vector{Community{T, AuxClasses}}
+    ) where {T<:Real, AuxClasses}
+    EvoHistory{T, AuxClasses}(comms)
 end
 
 
 function emptyCommunity(T::Type{<:Real} = Float64)
-    Community{T, 1, 1, 0}(Species{T, 1, 1}[], PopulationSize{T, 1}[], zero(T))
+    Community{T, 0}(Species{T}[], PopulationSize{T}[], zero(T))
 end
 
 
 function emptyEvoHistory(T::Type{<:Real} = Float64)
-    EvoHistory{T, 1, 1, 0}([emptyCommunity(T)])
+    EvoHistory{T, 0}([emptyCommunity(T)])
 end

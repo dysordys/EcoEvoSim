@@ -1,64 +1,55 @@
-struct PopulationSize{T<:Real, StageClasses}
-    popsize :: SVector{StageClasses, T}
-    function PopulationSize{T, StageClasses}(
-            popsize::SVector{StageClasses, T}
-        ) where {T<:Real, StageClasses}
-        StageClasses > 0 || throw(ArgumentError("StageClasses must be positive"))
-        new{T, StageClasses}(popsize)
+struct PopulationSize{T<:Real}
+    popsize :: Vector{T}
+    function PopulationSize{T}(popsize::Vector{T}) where {T<:Real}
+        length(popsize) > 0 || throw(ArgumentError("popsize must have positive length"))
+        new{T}(popsize)
     end
 end
 
 
-struct Phenotype{T<:Real, TraitDim}
-    trait :: SVector{TraitDim, T}
-    function Phenotype{T, TraitDim}(
-            trait::SVector{TraitDim, T}
-        ) where {T<:Real, TraitDim}
-        TraitDim > 0 || throw(ArgumentError("TraitDim must be positive"))
-        new{T, TraitDim}(trait)
+struct Phenotype{T<:Real}
+    trait :: Vector{T}
+    function Phenotype{T}(trait::Vector{T}) where {T<:Real}
+        length(trait) > 0 || throw(ArgumentError("trait must have positive length"))
+        new{T}(trait)
     end
 end
 
 
-struct Species{T<:Real, StageClasses, TraitDim}
-    popsize :: Vector{PopulationSize{T, StageClasses}}
-    trait :: Vector{Phenotype{T, TraitDim}}
-    function Species{T, StageClasses, TraitDim}(
-            popsize::Vector{PopulationSize{T, StageClasses}},
-            trait::Vector{Phenotype{T, TraitDim}}
-        ) where {T<:Real, StageClasses, TraitDim}
-        StageClasses > 0 || throw(ArgumentError("StageClasses must be positive"))
-        TraitDim > 0 || throw(ArgumentError("TraitDim must be positive"))
-        new{T, StageClasses, TraitDim}(popsize, trait)
+struct Species{T<:Real}
+    popsize :: Vector{PopulationSize{T}}
+    trait :: Vector{Phenotype{T}}
+    function Species{T}(popsize::Vector{PopulationSize{T}},
+                        trait::Vector{Phenotype{T}}) where {T<:Real}
+        length(popsize) > 0 || throw(ArgumentError("popsize must have positive length"))
+        length(trait) > 0 || throw(ArgumentError("trait must have positive length"))
+        new{T}(popsize, trait)
     end
 end
 
 
-struct Community{T<:Real, StageClasses, TraitDim, AuxClasses}
-    species :: Vector{Species{T, StageClasses, TraitDim}}
-    aux :: Vector{PopulationSize{T, 1}}  # Auxiliary variables (e.g., resources)
+struct Community{T<:Real, AuxClasses}
+    species :: Vector{Species{T}}
+    aux :: Vector{PopulationSize{T}}  # Auxiliary variables (e.g., resources)
     time :: T
-    function Community{T, StageClasses, TraitDim, AuxClasses}(
-            species::Vector{Species{T, StageClasses, TraitDim}},
-            aux::Vector{PopulationSize{T, 1}},
-            time::T = zero(T)
-        ) where {T <: Real, StageClasses, TraitDim, AuxClasses}
-        StageClasses > 0 || throw(ArgumentError("StageClasses must be positive"))
-        TraitDim > 0 || throw(ArgumentError("TraitDim must be positive"))
+    function Community{T, AuxClasses}(species::Vector{Species{T}},
+                                      aux::Vector{PopulationSize{T}},
+                                      time::T = zero(T)) where {T <: Real, AuxClasses}
         AuxClasses >= 0 || throw(ArgumentError("AuxClasses must be non-negative"))
-        new{T, StageClasses, TraitDim, AuxClasses}(species, aux, time)
+        length(aux) == AuxClasses || throw(ArgumentError(
+            "aux must have length $AuxClasses"
+        ))
+        new{T, AuxClasses}(species, aux, time)
     end
 end
 
 
-struct EvoHistory{T<:Real, StageClasses, TraitDim, AuxClasses}
-    history :: Vector{Community{T, StageClasses, TraitDim, AuxClasses}}
-    function EvoHistory{T, StageClasses, TraitDim, AuxClasses}(
-            history::Vector{Community{T, StageClasses, TraitDim, AuxClasses}}
-        ) where {T<:Real, StageClasses, TraitDim, AuxClasses}
-        StageClasses > 0 || throw(ArgumentError("StageClasses must be positive"))
-        TraitDim > 0 || throw(ArgumentError("TraitDim must be positive"))
+struct EvoHistory{T<:Real, AuxClasses}
+    history :: Vector{Community{T, AuxClasses}}
+    function EvoHistory{T, AuxClasses}(
+                history::Vector{Community{T, AuxClasses}}
+            ) where {T<:Real, AuxClasses}
         AuxClasses >= 0 || throw(ArgumentError("AuxClasses must be non-negative"))
-        new{T, StageClasses, TraitDim, AuxClasses}(history)
+        new{T, AuxClasses}(history)
     end
 end

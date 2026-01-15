@@ -25,8 +25,8 @@ end
 
 
 function Base.show(
-        io::IO, comm::Community{T, StageClasses, TraitDim, AuxClasses}
-    ) where {T, StageClasses, TraitDim, AuxClasses}
+        io::IO, comm::Community{T, AuxClasses}
+    ) where {T, AuxClasses}
     println(io, "Community (t = $(comm.time))")
     for (i, sp) in enumerate(comm.species)
         println(io, "  Species $i:")
