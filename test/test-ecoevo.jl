@@ -284,4 +284,475 @@ numTests = 50
         @test_throws ArgumentError generateMutant(comm, config, wrongCovMat2)
     end
 
+
+    @testset "testing_ecoDyn_simple_exponential_decay" begin
+        # Test ecoDyn with simple exponential decay: dx/dt = -x
+        for _ in 1:numTests
+            nSpecies = rand(2:5)
+
+            # Create species with random initial populations
+            species = Species{Float64}[]
+            initialPops = Float64[]
+            for i in 1:nSpecies
+                popsize = rand() * 10.0
+                push!(species, Species(popsize, rand(1)))
+                push!(initialPops, popsize)
+            end
+
+            comm = Community(species, PopulationSize{Float64}[], 0.0)
+
+            # Simple exponential decay dynamics
+            ecoDynFunc = (u, p, t) -> -u
+            mutGen = (c, cfg) -> generateMutant(c, cfg, 0.01)
+            params = IntegrationParams(maxTime=1.0, abstol=1e-8, reltol=1e-6)
+            config = EcoEvoConfig(
+                ecoDyn=ecoDynFunc,
+                mutationGenerator=mutGen,
+                integrationParams=params,
+                invaderPopsize=0.001,
+                extThreshold=1e-8
+            )
+
+            # Integrate dynamics
+            finalComm = ecoDyn(comm, config)
+
+            # Check that all populations decreased (exponential decay)
+            for i in 1:nSpecies
+                finalPop = popsizes(finalComm, i)[1]
+                initialPop = initialPops[i]
+                @test finalPop < initialPop
+                # Check approximate exponential decay: u(t) = u(0) * exp(-t)
+                expected = initialPop * exp(-1.0)
+                @test finalPop ≈ expected rtol=1e-3
+            end
+
+            # Check that time was updated
+            @test finalComm.time ≈ comm.time + params.maxTime
+
+            # Check that traits are unchanged
+            for i in 1:nSpecies
+                @test traits(finalComm, i) == traits(comm, i)
+            end
+        end
+    end
+
+
+    @testset "testing_ecoDyn_with_auxiliary_variables" begin
+        # Test ecoDyn with auxiliary variables
+        for _ in 1:numTests
+            nSpecies = rand(2:4)
+            nAux = rand(1:3)
+
+            # Create species and auxiliary variables
+            species = Species{Float64}[]
+            for i in 1:nSpecies
+                popsize = rand() * 5.0
+                push!(species, Species(popsize, rand(1)))
+            end
+
+            aux = [PopulationSize(rand() * 2.0) for _ in 1:nAux]
+            comm = Community(species, aux, 0.0)
+
+            # Dynamics: species decay, aux variables grow
+            function testDynamics(u, p, t)
+                du = similar(u)
+                # First nSpecies elements decay
+                for i in 1:nSpecies
+                    du[i] = -u[i]
+                end
+                # Remaining elements (aux) grow
+                for i in (nSpecies+1):length(u)
+                    du[i] = 0.5 * u[i]
+                end
+                return du
+            end
+
+            mutGen = (c, cfg) -> generateMutant(c, cfg, 0.01)
+            params = IntegrationParams(maxTime=1.0, abstol=1e-8, reltol=1e-6)
+            config = EcoEvoConfig(
+                ecoDyn=testDynamics,
+                mutationGenerator=mutGen,
+                integrationParams=params,
+                invaderPopsize=0.001,
+                extThreshold=1e-8
+            )
+
+            # Integrate
+            finalComm = ecoDyn(comm, config)
+
+            # Check species populations decreased
+            for i in 1:nSpecies
+                @test popsizes(finalComm, i)[1] < popsizes(comm, i)[1]
+            end
+
+            # Check auxiliary variables increased
+            for i in 1:nAux
+                @test finalComm.aux[i].popsize[1] > comm.aux[i].popsize[1]
+            end
+        end
+    end
+
+
+    @testset "testing_singleEvoStep_basic_functionality" begin
+        # Test that singleEvoStep performs all three operations correctly
+        for _ in 1:numTests
+            nSpecies = rand(2:5)
+
+            # Create species with varying populations
+            species = Species{Float64}[]
+            for i in 1:nSpecies
+                # Mix of healthy and near-extinct populations
+                popsize = rand() < 0.3 ? rand() * 1e-10 : rand() * 10.0
+                push!(species, Species(popsize, rand(1)))
+            end
+
+            comm = Community(species, PopulationSize{Float64}[], 0.0)
+
+            # Slow exponential decay
+            ecoDynFunc = (u, p, t) -> -0.1 * u
+            mutGen = (c, cfg) -> generateMutant(c, cfg, 0.01)
+            params = IntegrationParams(maxTime=1.0, abstol=1e-8, reltol=1e-6)
+            extThreshold = 1e-8
+            config = EcoEvoConfig(
+                ecoDyn=ecoDynFunc,
+                mutationGenerator=mutGen,
+                integrationParams=params,
+                invaderPopsize=1.0,
+                extThreshold=extThreshold
+            )
+
+            initialNumSpecies = numSpecies(comm)
+
+            # Perform one evolutionary step
+            resultComm = singleEvoStep(comm, config)
+
+            # Check that a mutant was added (may be removed if it goes extinct)
+            # and dynamics were integrated (time changed)
+            @test resultComm.time > comm.time
+
+            # Check that extinct species were removed
+            for i in 1:numSpecies(resultComm)
+                @test popsizes(resultComm, i)[1] >= extThreshold
+            end
+
+            # Check that if any species in original were below threshold,
+            # the result has fewer species (or same if mutant also went extinct)
+            nExtinct = count(popsizes(comm, i)[1] < extThreshold for i in 1:initialNumSpecies)
+            if nExtinct > 0
+                @test numSpecies(resultComm) <= initialNumSpecies + 1 - nExtinct
+            end
+        end
+    end
+
+
+    @testset "testing_singleEvoStep_mutant_addition" begin
+        # Test that mutant is properly added with invader population size
+        nSpecies = 3
+
+        # Create healthy species
+        species = [Species(5.0, [i/10.0]) for i in 1:nSpecies]
+        comm = Community(species, PopulationSize{Float64}[], 0.0)
+
+        # Very slow dynamics so populations don't change much
+        ecoDynFunc = (u, p, t) -> -0.001 * u
+        mutGen = (c, cfg) -> generateMutant(c, cfg, 0.01)
+        params = IntegrationParams(maxTime=0.1, abstol=1e-8, reltol=1e-6)
+        invaderPop = 2.5
+        config = EcoEvoConfig(
+            ecoDyn=ecoDynFunc,
+            mutationGenerator=mutGen,
+            integrationParams=params,
+            invaderPopsize=invaderPop,
+            extThreshold=1e-8
+        )
+
+        resultComm = singleEvoStep(comm, config)
+
+        # Should have one more species (no extinctions with slow dynamics)
+        @test numSpecies(resultComm) == nSpecies + 1
+
+        # Check that mutant (newest species) started with invader popsize
+        # and decayed slightly
+        finalMutantPop = popsizes(resultComm, nSpecies + 1)[1]
+        expectedMutantPop = invaderPop * exp(-0.001 * 0.1)
+        @test finalMutantPop ≈ expectedMutantPop rtol=1e-3
+    end
+
+
+    @testset "testing_singleEvoStep_extinction" begin
+        # Test that near-extinct species are removed
+        # Create species with one already below threshold
+        species = [
+            Species(5.0, [0.1]),
+            Species(1e-10, [0.5]),  # Below typical threshold
+            Species(3.0, [0.9])
+        ]
+        comm = Community(species, PopulationSize{Float64}[], 0.0)
+
+        ecoDynFunc = (u, p, t) -> -0.01 * u
+        mutGen = (c, cfg) -> generateMutant(c, cfg, 0.01)
+        params = IntegrationParams(maxTime=1.0, abstol=1e-8, reltol=1e-6)
+        config = EcoEvoConfig(
+            ecoDyn=ecoDynFunc,
+            mutationGenerator=mutGen,
+            integrationParams=params,
+            invaderPopsize=1.0,
+            extThreshold=1e-8
+        )
+
+        resultComm = singleEvoStep(comm, config)
+
+        # Should have removed the near-extinct species
+        # Start with 3, add 1 mutant = 4, remove 1 extinct = 3
+        @test numSpecies(resultComm) == 3
+
+        # All remaining species should be above threshold
+        for i in 1:numSpecies(resultComm)
+            @test popsizes(resultComm, i)[1] >= config.extThreshold
+        end
+    end
+
+
+    @testset "testing_evolve!_basic_functionality" begin
+        # Test that evolve! performs multiple evolutionary steps and records history
+        # Create initial community
+        nSpecies = 3
+        species = [Species(5.0, [k / 10.0]) for k in 1:nSpecies]
+        initialComm = Community(species, PopulationSize{Float64}[], 0.0)
+
+        # Create history with initial community
+        history = EvoHistory{Float64, 0}([initialComm])
+
+        # Very slow dynamics so populations don't change much
+        ecoDynFunc = (u, p, t) -> -0.001 * u
+        mutGen = (c, cfg) -> generateMutant(c, cfg, 0.01)
+        params = IntegrationParams(maxTime=0.1, abstol=1e-8, reltol=1e-6)
+        config = EcoEvoConfig(
+            ecoDyn=ecoDynFunc,
+            mutationGenerator=mutGen,
+            integrationParams=params,
+            invaderPopsize=1.0,
+            extThreshold=1e-8
+        )
+
+        nMutEvents = 5
+
+        # Run evolution
+        evolve!(history, config, nMutEvents)
+
+        # Check that history has been extended correctly
+        @test length(history.history) == 1 + nMutEvents  # initial + nMutEvents
+
+        # Check that number of species increases (or stays same if extinctions occur)
+        finalComm = history.history[end]
+        @test numSpecies(finalComm) >= nSpecies
+
+        # Check that time progresses
+        @test finalComm.time > initialComm.time
+
+        # Check that all communities in history are valid
+        for comm in history.history
+            @test numSpecies(comm) > 0
+            for i in 1:numSpecies(comm)
+                @test popsizes(comm, i)[1] >= config.extThreshold
+            end
+        end
+    end
+
+
+    @testset "testing_evolve!_history_tracking" begin
+        # Test that history correctly tracks evolutionary trajectory
+        nSpecies = 2
+        species = [Species(10.0, [k / 5.0]) for k in 1:nSpecies]
+        initialComm = Community(species, PopulationSize{Float64}[], 0.0)
+
+        history = EvoHistory{Float64, 0}([initialComm])
+
+        # Slow exponential decay
+        ecoDynFunc = (u, p, t) -> -0.01 * u
+        mutGen = (c, cfg) -> generateMutant(c, cfg, 0.01)
+        params = IntegrationParams(maxTime=1.0, abstol=1e-8, reltol=1e-6)
+        config = EcoEvoConfig(
+            ecoDyn=ecoDynFunc,
+            mutationGenerator=mutGen,
+            integrationParams=params,
+            invaderPopsize=2.0,
+            extThreshold=1e-8
+        )
+
+        nMutEvents = 3
+        evolve!(history, config, nMutEvents)
+
+        # Verify each step adds to history
+        @test length(history.history) == 4  # 1 initial + 3 events
+
+        # Verify time is monotonically increasing
+        times = [comm.time for comm in history.history]
+        @test issorted(times)
+        @test all(times .>= 0.0)
+
+        # Verify species count increases (assuming no extinctions with these parameters)
+        speciesCounts = [numSpecies(comm) for comm in history.history]
+        @test speciesCounts[1] == nSpecies
+        # Each step adds a mutant, so should increase
+        for i in 2:length(speciesCounts)
+            @test speciesCounts[i] >= speciesCounts[i-1]
+        end
+    end
+
+
+    @testset "testing_evolve!_with_extinctions" begin
+        # Test evolve! when extinctions occur
+        # Create community with some weak species
+        species = [
+            Species(10.0, [0.1]),
+            Species(0.5, [0.5]),   # Weak species
+            Species(8.0, [0.9])
+        ]
+        initialComm = Community(species, PopulationSize{Float64}[], 0.0)
+
+        history = EvoHistory{Float64, 0}([initialComm])
+
+        # Stronger decay
+        ecoDynFunc = (u, p, t) -> -0.5 * u
+        mutGen = (c, cfg) -> generateMutant(c, cfg, 0.01)
+        params = IntegrationParams(maxTime=2.0, abstol=1e-8, reltol=1e-6)
+        config = EcoEvoConfig(
+            ecoDyn=ecoDynFunc,
+            mutationGenerator=mutGen,
+            integrationParams=params,
+            invaderPopsize=1.0,
+            extThreshold=0.1  # Higher threshold to cause extinctions
+        )
+
+        nMutEvents = 3
+        evolve!(history, config, nMutEvents)
+
+        # History should have correct length
+        @test length(history.history) == 4
+
+        # All species in final community should be above threshold
+        finalComm = history.history[end]
+        for i in 1:numSpecies(finalComm)
+            @test popsizes(finalComm, i)[1] >= config.extThreshold
+        end
+
+        # Check that extinctions may have occurred
+        # (species count might not always increase)
+        @test numSpecies(finalComm) >= 1  # At least some species survive
+    end
+
+
+    @testset "testing_evolve!_empty_history_error" begin
+        # Test that evolve! throws error for empty history
+        emptyHistory = EvoHistory{Float64, 0}(Community{Float64, 0}[])
+
+        ecoDynFunc = (u, p, t) -> -0.01 * u
+        mutGen = (c, cfg) -> generateMutant(c, cfg, 0.01)
+        params = IntegrationParams(maxTime=1.0, abstol=1e-8, reltol=1e-6)
+        config = EcoEvoConfig(
+            ecoDyn=ecoDynFunc,
+            mutationGenerator=mutGen,
+            integrationParams=params,
+            invaderPopsize=1.0,
+            extThreshold=1e-8
+        )
+
+        @test_throws ArgumentError evolve!(emptyHistory, config, 1)
+    end
+
+
+    @testset "testing_evolve!_zero_events" begin
+        # Test that evolve! with 0 events doesn't modify history
+        species = [Species(5.0, [0.5])]
+        initialComm = Community(species, PopulationSize{Float64}[], 0.0)
+        history = EvoHistory{Float64, 0}([initialComm])
+
+        ecoDynFunc = (u, p, t) -> -0.01 * u
+        mutGen = (c, cfg) -> generateMutant(c, cfg, 0.01)
+        params = IntegrationParams(maxTime=1.0, abstol=1e-8, reltol=1e-6)
+        config = EcoEvoConfig(
+            ecoDyn=ecoDynFunc,
+            mutationGenerator=mutGen,
+            integrationParams=params,
+            invaderPopsize=1.0,
+            extThreshold=1e-8
+        )
+
+        evolve!(history, config, 0)
+
+        # History should remain unchanged
+        @test length(history.history) == 1
+        @test history.history[1] === initialComm
+    end
+
+
+    @testset "testing_evolve!_convenience_method_with_community" begin
+        # Test the convenience method that takes a Community directly
+        nSpecies = 3
+        species = [Species(5.0, [i/10.0]) for i in 1:nSpecies]
+        initialComm = Community(species, PopulationSize{Float64}[], 0.0)
+
+        # Very slow dynamics
+        ecoDynFunc = (u, p, t) -> -0.001 * u
+        mutGen = (c, cfg) -> generateMutant(c, cfg, 0.01)
+        params = IntegrationParams(maxTime=0.1, abstol=1e-8, reltol=1e-6)
+        config = EcoEvoConfig(
+            ecoDyn=ecoDynFunc,
+            mutationGenerator=mutGen,
+            integrationParams=params,
+            invaderPopsize=1.0,
+            extThreshold=1e-8
+        )
+
+        nMutEvents = 4
+
+        # Call convenience method - returns history
+        history = evolve!(initialComm, config, nMutEvents)
+
+        # Check that history is returned and has correct structure
+        @test history isa EvoHistory{Float64, 0}
+        @test length(history.history) == 1 + nMutEvents  # initial + events
+
+        # Check that first community in history is the initial one
+        @test history.history[1].time == initialComm.time
+        @test numSpecies(history.history[1]) == numSpecies(initialComm)
+
+        # Check that evolution occurred
+        finalComm = history.history[end]
+        @test finalComm.time > initialComm.time
+        @test numSpecies(finalComm) >= nSpecies
+    end
+
+
+    @testset "testing_evolve!_convenience_method_comparison" begin
+        # Test that convenience method produces same result as manual history creation
+        nSpecies = 2
+        species = [Species(10.0, [i/5.0]) for i in 1:nSpecies]
+        comm1 = Community(species, PopulationSize{Float64}[], 0.0)
+        comm2 = Community(species, PopulationSize{Float64}[], 0.0)
+
+        ecoDynFunc = (u, p, t) -> -0.01 * u
+        mutGen = (c, cfg) -> generateMutant(c, cfg, 0.01)
+        params = IntegrationParams(maxTime=1.0, abstol=1e-8, reltol=1e-6)
+        config = EcoEvoConfig(
+            ecoDyn=ecoDynFunc,
+            mutationGenerator=mutGen,
+            integrationParams=params,
+            invaderPopsize=2.0,
+            extThreshold=1e-8
+        )
+
+        # Use convenience method
+        history1 = evolve!(comm1, config, 3)
+
+        # Manual history creation
+        history2 = EvoHistory{Float64, 0}([comm2])
+        evolve!(history2, config, 3)
+
+        # Both should have same structure
+        @test length(history1.history) == length(history2.history)
+        @test numSpecies(history1.history[end]) == numSpecies(history2.history[end])
+    end
+
 end

@@ -19,7 +19,7 @@ export PopulationSize, Phenotype, Species, Community, EvoHistory,
        randomSpecies, weightedRandomSpecies, speciesBelowThreshold, removeExtinct,
        traitSpaceDim, addSpecies, removeSpecies, changePopsizes, changeTraits,
        orderByTrait, emptyCommunity, emptyEvoHistory, IntegrationParams, EcoEvoConfig,
-       generateMutant, generateMutantWeighted, ecoDyn, evolve!,
+       generateMutant, generateMutantWeighted, ecoDyn, singleEvoStep, evolve!,
        unpackCommunity, packCommunity
 
 

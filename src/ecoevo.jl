@@ -3,6 +3,8 @@
 using Distributions
 using LinearAlgebra
 using DifferentialEquations
+using Pipe
+
 
 struct IntegrationParams{T<:Real, Alg}
     maxTime :: T
@@ -271,13 +273,35 @@ end
 
 
 """
+    singleEvoStep(community::Community{T, AuxClasses}, config::EcoEvoConfig{T}) where {T, AuxClasses}
+
+Perform one eco-evolutionary step:
+1. Add a mutant species using the mutation generator from config
+2. Integrate ecological dynamics using ecoDyn
+3. Remove species below extinction threshold
+4. Return the resulting community
+"""
+function singleEvoStep(
+        community::Community{T, AuxClasses},
+        config::EcoEvoConfig{T}
+    ) where {T<:Real, AuxClasses}
+
+    @pipe community |>
+        config.mutationGenerator(_, config) |>
+        ecoDyn(_, config) |>
+        removeExtinct(_, config.extThreshold)
+end
+
+
+"""
     evolve!(history::EvoHistory{T, AuxClasses}, config::EcoEvoConfig{T}, nMutEvents::Int) where {T, AuxClasses}
 
 Run the main eco-evolutionary simulation loop:
 1. Start with the last community in history
-2. Integrate to equilibrium
+2. Integrate ecological dynamics
 3. Introduce a mutant
-4. Repeat for nMutEvents mutation events
+4. Remove extinct species
+5. Repeat for nMutEvents mutation events
 
 Modifies history in place by appending new communities.
 """
@@ -287,6 +311,44 @@ function evolve!(
         nMutEvents::Int
     ) where {T<:Real, AuxClasses}
     nMutEvents >= 0 || throw(ArgumentError("nMutEvents must be non-negative"))
-    # TODO: Implement main simulation loop
-    error("evolve! not yet implemented")
+
+    # Get the current community (last in history)
+    length(history.history) > 0 ||
+        throw(ArgumentError("History must contain at least one community"))
+    currentComm = history.history[end]
+
+    # Perform nMutEvents evolutionary steps
+    for _ in 1:nMutEvents
+        # Apply one evolutionary step (mutant addition → dynamics → extinction removal)
+        currentComm = singleEvoStep(currentComm, config)
+
+        # Append to history
+        push!(history.history, currentComm)
+    end
+
+    return nothing
+end
+
+
+"""
+    evolve!(community::Community{T, AuxClasses}, config::EcoEvoConfig{T}, nMutEvents::Int) where {T, AuxClasses}
+
+Convenience method that creates an EvoHistory from the initial community
+and runs the evolutionary simulation.
+
+Returns the EvoHistory containing the initial community plus all evolved communities.
+"""
+function evolve!(
+        community::Community{T, AuxClasses},
+        config::EcoEvoConfig{T},
+        nMutEvents::Int
+    ) where {T<:Real, AuxClasses}
+    # Create history with initial community
+    history = EvoHistory(community)
+
+    # Run evolution
+    evolve!(history, config, nMutEvents)
+
+    # Return the history for user access
+    return history
 end
