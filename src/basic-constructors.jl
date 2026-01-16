@@ -35,15 +35,15 @@ Species(popsizeVal::T, traitVal::T) where {T<:Real} =
 
 
 Species(popsizeVec::AbstractVector{T}, traitVal::T) where {T<:Real} =
-    Species{T}(popsizeVec, traitVal)
+    Species{T}([PopulationSize(popsizeVec)], [Phenotype(traitVal)])
 
 
 Species(popsizeVal::T, traitVec::AbstractVector{T}) where {T<:Real} =
-    Species{T}(popsizeVal, traitVec)
+    Species{T}([PopulationSize(popsizeVal)], [Phenotype(traitVec)])
 
 
 Species(popsizeVec::AbstractVector{T}, traitVec::AbstractVector{T}) where {T<:Real} =
-    Species{T}(popsizeVec, traitVec)
+    Species{T}([PopulationSize(popsizeVec)], [Phenotype(traitVec)])
 
 
 function Species(popMat::AbstractMatrix{T}, traitMat::AbstractMatrix{T}) where {T<:Real}
@@ -87,14 +87,15 @@ function Community(
     ) where {T<:Real}
     length(popVals) == length(traitVals) ||
         throw(ArgumentError("`popVals` and `traitVals` must have the same length"))
-    sp = Species{T}(
-        [PopulationSize{T}(Vector{T}(popVals))],
-        [Phenotype{T}(Vector{T}(traitVals))]
-    )
+    # Create vector of species where each species has one stage class and one trait value
+    species = [Species{T}(
+        [PopulationSize{T}([popVals[i]])],
+        [Phenotype{T}([traitVals[i]])]
+    ) for i in 1:length(popVals)]
     aux = [PopulationSize{T}([a]) for a in auxVals]
     AuxClasses = length(aux)
     Community{T, AuxClasses}(
-        [sp], aux, zero(T)
+        species, aux, zero(T)
     )
 end
 

@@ -176,16 +176,19 @@ numTests = 50
     @testset "testing_Community_constructor_from_values" begin
         for _ in 1:numTests
             T = Float64
-            stageClasses = rand(1:3)
-            popvals = rand(T, stageClasses)
-            traitvals = rand(T, stageClasses) # must match length of popvals
+            numSpecies = rand(1:5)
+            popvals = rand(T, numSpecies)
+            traitvals = rand(T, numSpecies) # must match length of popvals
             auxvals = rand(T, rand(0:3))
 
             comm = Community(popvals, traitvals, auxvals)
-            @test length(comm.species) == 1
-            sp = comm.species[1]
-            @test sp.popsize[1].popsize == Vector{T}(popvals)
-            @test sp.trait[1].trait == Vector{T}(traitvals)
+            @test length(comm.species) == numSpecies
+            for (i, sp) in enumerate(comm.species)
+                @test length(sp.popsize) == 1
+                @test length(sp.trait) == 1
+                @test sp.popsize[1].popsize == [popvals[i]]
+                @test sp.trait[1].trait == [traitvals[i]]
+            end
             @test length(comm.aux) == length(auxvals)
             for (a,v) in zip(comm.aux, auxvals)
                 @test a.popsize[1] == v
