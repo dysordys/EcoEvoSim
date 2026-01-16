@@ -91,7 +91,7 @@ function Community(
     species = [Species{T}(
         [PopulationSize{T}([popVals[i]])],
         [Phenotype{T}([traitVals[i]])]
-    ) for i in 1:length(popVals)]
+    ) for i in eachindex(popVals)]
     aux = [PopulationSize{T}([a]) for a in auxVals]
     AuxClasses = length(aux)
     Community{T, AuxClasses}(

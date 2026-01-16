@@ -29,16 +29,16 @@ IntegrationParams(maxTime::T; algorithm::Alg = Rodas5(),
 # Keyword argument constructor with explicit abstol/reltol (captures any additional kwargs)
 function IntegrationParams(; maxTime::T,
                             algorithm::Alg = Rodas5(),
-                            abstol::T = T(1e-8),
-                            reltol::T = T(1e-6),
+                            abstol = 1e-8,
+                            reltol = 1e-6,
                             kwargs...) where {T<:Real, Alg}
-    solver_options = merge((abstol=abstol, reltol=reltol), kwargs)
+    solver_options = merge((abstol=convert(T, abstol), reltol=convert(T, reltol)), kwargs)
     IntegrationParams(maxTime, algorithm, solver_options)
 end
 
 
 struct EcoEvoConfig{T<:Real, EcoDynamics, MutGenerator, Alg}
-    ecoDyn :: EcoDynamics  # Function defining dx/dt = f(x, t, params)
+    ecoDyn :: EcoDynamics  # Factory function: Community -> (u, p, t) -> du
     mutationGenerator :: MutGenerator   # Function generating mutant traits
     integrationParams :: IntegrationParams{T, Alg}
     invaderPopsize :: T # Population size at which new mutants are introduced
@@ -73,10 +73,10 @@ end
 function EcoEvoConfig(; ecoDyn::ED,
                         mutationGenerator::MG,
                         integrationParams::IntegrationParams{T, Alg},
-                        invaderPopsize::T,
-                        extThreshold::T) where {T<:Real, ED, MG, Alg}
-    EcoEvoConfig(ecoDyn, mutationGenerator, integrationParams,
-                 invaderPopsize, extThreshold)
+                        invaderPopsize::Real,
+                        extThreshold::Real) where {T<:Real, ED, MG, Alg}
+    EcoEvoConfig{T, ED, MG, Alg}(ecoDyn, mutationGenerator, integrationParams,
+                 convert(T, invaderPopsize), convert(T, extThreshold))
 end
 
 
@@ -149,6 +149,9 @@ end
 Integrate ecological dynamics for the specified time period.
 Extracts population sizes and auxiliary variables, integrates the ODE system,
 and returns a new community with updated values.
+
+The config.ecoDyn field should be a factory function that takes a Community
+and returns an ODE function (u, p, t) -> du.
 """
 function ecoDyn(
         community::Community{T, AuxClasses},
@@ -158,9 +161,12 @@ function ecoDyn(
     # Unpack community into state vector
     u0 = unpackCommunity(community)
 
+    # Generate the ODE function for this specific community
+    ode_fn = config.ecoDyn(community)
+
     # Define ODE problem
     tspan = (community.time, community.time + config.integrationParams.maxTime)
-    prob = ODEProblem(config.ecoDyn, u0, tspan)
+    prob = ODEProblem(ode_fn, u0, tspan)
 
     # Solve with specified algorithm and solver options
     sol = solve(prob, config.integrationParams.algorithm;

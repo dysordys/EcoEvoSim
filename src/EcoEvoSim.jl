@@ -4,6 +4,7 @@ using Random
 using Distributions
 using LinearAlgebra
 using DifferentialEquations
+using Plots
 
 
 include("basic-types.jl")
@@ -12,6 +13,8 @@ include("basic-selectors.jl")
 include("show-methods.jl")
 include("basic-utils.jl")
 include("ecoevo.jl")
+include("models.jl")
+include("visualize.jl")
 
 
 export PopulationSize, Phenotype, Species, Community, EvoHistory,
@@ -20,7 +23,7 @@ export PopulationSize, Phenotype, Species, Community, EvoHistory,
        traitSpaceDim, addSpecies, removeSpecies, changePopsizes, changeTraits,
        orderByTrait, emptyCommunity, emptyEvoHistory, IntegrationParams, EcoEvoConfig,
        generateMutant, generateMutantWeighted, ecoDyn, singleEvoStep, evolve!,
-       unpackCommunity, packCommunity
+       unpackCommunity, packCommunity, lotkaVolterra, plotEvo
 
 
 end # module EcoEvoSim
