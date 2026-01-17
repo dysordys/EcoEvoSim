@@ -4,6 +4,7 @@ using Distributions
 using LinearAlgebra
 using DifferentialEquations
 using Pipe
+using ProgressMeter
 
 
 struct IntegrationParams{T<:Real, Alg}
@@ -164,17 +165,32 @@ function ecoDyn(
     # Generate the ODE function for this specific community
     ode_fn = config.ecoDyn(community)
 
-    # Define ODE problem
-    tspan = (community.time, community.time + config.integrationParams.maxTime)
-    prob = ODEProblem(ode_fn, u0, tspan)
+    # Check if we're using a steady-state solver
+    alg = config.integrationParams.algorithm
+    if alg isa DynamicSS || alg isa SSRootfind
+        # Use SteadyStateProblem for steady-state solvers
+        prob = SteadyStateProblem(ode_fn, u0)
+    else
+        # Use ODEProblem for time-integration solvers
+        tspan = (community.time, community.time + config.integrationParams.maxTime)
+        prob = ODEProblem(ode_fn, u0, tspan)
+    end
 
     # Solve with specified algorithm and solver options
     sol = solve(prob, config.integrationParams.algorithm;
                 config.integrationParams.solver_options...)
 
     # Extract final state and pack back into Community
-    u_final = sol.u[end]
-    t_final = sol.t[end]
+    # For steady-state problems, sol.u is the solution vector directly
+    # For ODE problems, sol.u is an array of states over time
+    if alg isa DynamicSS || alg isa SSRootfind
+        u_final = sol.u
+        # Fixed-point integration is equivalent to integrating to t = Inf
+        t_final = T(Inf)
+    else
+        u_final = sol.u[end]
+        t_final = sol.t[end]
+    end
 
     return packCommunity(u_final, community, t_final)
 end
@@ -314,7 +330,8 @@ Modifies history in place by appending new communities.
 function evolve!(
         history::EvoHistory{T, AuxClasses},
         config::EcoEvoConfig{T},
-        nMutEvents::Int
+        nMutEvents::Int;
+        showProgress::Bool = true
     ) where {T<:Real, AuxClasses}
     nMutEvents >= 0 || throw(ArgumentError("nMutEvents must be non-negative"))
 
@@ -324,12 +341,16 @@ function evolve!(
     currentComm = history.history[end]
 
     # Perform nMutEvents evolutionary steps
+    progress = showProgress ? Progress(nMutEvents, dt=0.5) : nothing
     for _ in 1:nMutEvents
         # Apply one evolutionary step (mutant addition → dynamics → extinction removal)
         currentComm = singleEvoStep(currentComm, config)
 
         # Append to history
         push!(history.history, currentComm)
+
+        # Update progress bar
+        showProgress && next!(progress)
     end
 
     return nothing
@@ -337,7 +358,7 @@ end
 
 
 """
-    evolve!(community::Community{T, AuxClasses}, config::EcoEvoConfig{T}, nMutEvents::Int) where {T, AuxClasses}
+    evolve!(community::Community{T, AuxClasses}, config::EcoEvoConfig{T}, nMutEvents::Int; showProgress::Bool=true) where {T, AuxClasses}
 
 Convenience method that creates an EvoHistory from the initial community
 and runs the evolutionary simulation.
@@ -347,13 +368,14 @@ Returns the EvoHistory containing the initial community plus all evolved communi
 function evolve!(
         community::Community{T, AuxClasses},
         config::EcoEvoConfig{T},
-        nMutEvents::Int
+        nMutEvents::Int;
+        showProgress::Bool = true
     ) where {T<:Real, AuxClasses}
     # Create history with initial community
     history = EvoHistory(community)
 
     # Run evolution
-    evolve!(history, config, nMutEvents)
+    evolve!(history, config, nMutEvents; showProgress=showProgress)
 
     # Return the history for user access
     return history
