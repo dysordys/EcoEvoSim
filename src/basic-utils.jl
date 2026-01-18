@@ -252,3 +252,139 @@ end
 function orderByTrait(comm::Community)
     orderByTrait(comm, 1)
 end
+
+
+"""
+    historyToTable(history::EvoHistory)
+
+Convert an EvoHistory to a tabular format suitable for saving as CSV/TSV.
+
+Returns an `OrderedDict` where keys are column names and values are vectors of the data.
+Each row represents one species at one mutation event, with multiple rows per mutation event.
+
+# Column structure
+- `mutNo`: Mutation event number (0 for initial community)
+- `time`: Integration time for the given step
+- `species`: Species index within the community
+- `popsize_i`: Population size in stage class i
+- `trait_j`: Trait value in dimension j
+- `aux_k`: Auxiliary variable k (same for all species in a mutation event)
+
+The maximum number of stage classes, trait dimensions, and auxiliary variables
+across all communities determines the number of columns.
+
+# Example
+```julia
+history = evolve!(community, config, 100)
+table = historyToTable(history)
+
+# Save to CSV (requires DataFrames and CSV packages)
+using DataFrames, CSV
+df = DataFrame(table)
+CSV.write("evolution.csv", df)
+```
+"""
+function historyToTable(history::EvoHistory{T, AuxClasses}) where {T<:Real, AuxClasses}
+    nSteps = length(history.history)
+    nSteps > 0 || throw(ArgumentError("Cannot convert empty history to table"))
+
+    # Determine maximum dimensions and count total rows
+    dims = _getMaxDimensions(history.history)
+    nRows = sum(numSpecies(comm) for comm in history.history)
+
+    # Initialize table as an ordered dictionary of vectors to preserve column order
+    table = OrderedDict{String, Vector{Union{T, Missing, Int}}}()
+
+    # Initialize columns
+    table["mutNo"] = Vector{Int}(undef, nRows)
+    table["time"] = Vector{T}(undef, nRows)
+    table["species"] = Vector{Int}(undef, nRows)
+
+    # Add popsize columns
+    for i in 1:dims.maxStageClasses
+        table["popsize_$i"] = Vector{Union{T, Missing}}(undef, nRows)
+    end
+
+    # Add trait columns
+    for j in 1:dims.maxTraitDims
+        table["trait_$j"] = Vector{Union{T, Missing}}(undef, nRows)
+    end
+
+    # Add auxiliary variable columns
+    for k in 1:dims.maxAuxVars
+        for c in 1:dims.maxAuxComponents
+            table["aux_$(k)_$(c)"] = Vector{Union{T, Missing}}(undef, nRows)
+        end
+    end
+
+    # Fill in the data row by row
+    rowIdx = 1
+    for (mutEvent, comm) in enumerate(history.history)
+        nSpecies = numSpecies(comm)
+        for sp in 1:nSpecies
+            # Basic info
+            table["mutNo"][rowIdx] = mutEvent - 1  # 0-indexed
+            table["time"][rowIdx] = comm.time
+            table["species"][rowIdx] = sp
+
+            # Popsize data
+            popsize_vals = popsizes(comm, sp)
+            for i in 1:dims.maxStageClasses
+                table["popsize_$i"][rowIdx] = i <= length(popsize_vals) ? popsize_vals[i] : missing
+            end
+
+            # Trait data
+            trait_vals = traits(comm, sp)
+            for j in 1:dims.maxTraitDims
+                table["trait_$j"][rowIdx] = j <= length(trait_vals) ? trait_vals[j] : missing
+            end
+
+            # Auxiliary variable data (same for all species in this mutation event)
+            aux_vars = auxs(comm)
+            for k in 1:dims.maxAuxVars
+                for c in 1:dims.maxAuxComponents
+                    if k <= length(aux_vars)
+                        aux_components = aux_vars[k].popsize
+                        table["aux_$(k)_$(c)"][rowIdx] = c <= length(aux_components) ?
+                                                         aux_components[c] : missing
+                    else
+                        table["aux_$(k)_$(c)"][rowIdx] = missing
+                    end
+                end
+            end
+
+            rowIdx += 1
+        end
+    end
+
+    return table
+end
+
+
+"""
+Helper function to determine maximum dimensions across all communities in history.
+"""
+function _getMaxDimensions(communities::Vector{<:Community})
+    maxSpecies = maximum(numSpecies(comm) for comm in communities)
+    maxStageClasses = 0
+    maxTraitDims = 0
+    maxAuxVars = 0
+    maxAuxComponents = 0
+
+    for comm in communities
+        if numSpecies(comm) > 0
+            maxStageClasses = max(maxStageClasses, length(popsizes(comm, 1)))
+            maxTraitDims = max(maxTraitDims, length(traits(comm, 1)))
+        end
+        if length(auxs(comm)) > 0
+            maxAuxVars = length(auxs(comm))
+            maxAuxComponents = max(maxAuxComponents, length(auxs(comm)[1].popsize))
+        end
+    end
+
+    return (maxSpecies = maxSpecies, maxStageClasses = maxStageClasses,
+            maxTraitDims = maxTraitDims, maxAuxVars = maxAuxVars,
+            maxAuxComponents = maxAuxComponents)
+end
+
+

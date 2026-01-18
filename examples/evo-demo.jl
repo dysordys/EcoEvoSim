@@ -1,5 +1,7 @@
 using EcoEvoSim
 using Plots
+using DataFrames
+using CSV
 
 
 # Create a simple evolutionary simulation
@@ -16,7 +18,11 @@ config = EcoEvoConfig(
     extThreshold = 0.003
 )
 
-history = evolve!(community, config, 15000)
+history = evolve!(community, config, 1500)
 
 p = plotEvo(history)
-savefig(p, "test_plotEvo.png")
+# savefig(p, "test_plotEvo.png")
+
+# Test historyToTable
+table = historyToTable(history)
+CSV.write("evo.csv", DataFrame(table))

@@ -317,4 +317,178 @@ numTests = 50
         @test traits(comm_ordered, 3)[1] ≈ 0.3
     end
 
+
+    @testset "testing_historyToTable_basic_functionality" begin
+        # Create a simple history with single stage class and trait dimension
+        T = Float64
+        comm1 = Community([1.0, 2.0], [0.1, 0.2], Float64[])
+
+        sp1 = Species(PopulationSize([1.5]), Phenotype([0.15]))
+        sp2 = Species(PopulationSize([2.5]), Phenotype([0.25]))
+        sp3 = Species(PopulationSize([3.0]), Phenotype([0.35]))
+        comm2 = Community([sp1, sp2, sp3], PopulationSize{T}[], 10.0)
+
+        sp4 = Species(PopulationSize([1.8]), Phenotype([0.18]))
+        sp5 = Species(PopulationSize([2.8]), Phenotype([0.28]))
+        comm3 = Community([sp4, sp5], PopulationSize{T}[], 20.0)
+        history = EvoHistory([comm1, comm2, comm3])
+
+        table = historyToTable(history)
+
+        # Check basic structure (long format: one row per species)
+        @test table isa AbstractDict
+        @test haskey(table, "mutNo")
+        @test haskey(table, "time")
+        @test haskey(table, "species")
+        @test length(table["mutNo"]) == 7  # 2 + 3 + 2 species across events
+
+        # Check first community (2 species)
+        @test table["mutNo"][1:2] == [0, 0]
+        @test table["time"][1:2] == [0.0, 0.0]
+        @test table["species"][1:2] == [1, 2]
+        @test table["popsize_1"][1:2] == [1.0, 2.0]
+        @test table["trait_1"][1:2] == [0.1, 0.2]
+
+        # Check second community (3 species)
+        @test table["mutNo"][3:5] == [1, 1, 1]
+        @test table["time"][3:5] == [10.0, 10.0, 10.0]
+        @test table["species"][3:5] == [1, 2, 3]
+        @test table["popsize_1"][3:5] == [1.5, 2.5, 3.0]
+        @test table["trait_1"][3:5] == [0.15, 0.25, 0.35]
+
+        # Check third community (2 species)
+        @test table["mutNo"][6:7] == [2, 2]
+        @test table["time"][6:7] == [20.0, 20.0]
+        @test table["species"][6:7] == [1, 2]
+        @test table["popsize_1"][6:7] == [1.8, 2.8]
+        @test table["trait_1"][6:7] == [0.18, 0.28]
+    end
+
+
+    @testset "testing_historyToTable_with_stage_classes" begin
+        # Create history with multiple stage classes
+        T = Float64
+        ps1 = PopulationSize([1.0, 1.5])
+        ps2 = PopulationSize([2.0, 2.5])
+        ph1 = Phenotype([0.1])
+        ph2 = Phenotype([0.2])
+        comm1 = Community([Species(ps1, ph1), Species(ps2, ph2)], PopulationSize{T}[])
+
+        ps3 = PopulationSize([1.2, 1.6])
+        ps4 = PopulationSize([2.2, 2.6])
+        comm2 = Community([Species(ps3, ph1), Species(ps4, ph2)], PopulationSize{T}[], 5.0)
+
+        history = EvoHistory([comm1, comm2])
+        table = historyToTable(history)
+
+        # Check that both stage classes are present (4 total rows: 2 species × 2 events)
+        @test haskey(table, "popsize_1")
+        @test haskey(table, "popsize_2")
+        @test length(table["mutNo"]) == 4
+
+        # First community, species 1
+        @test table["popsize_1"][1] == 1.0
+        @test table["popsize_2"][1] == 1.5
+        # First community, species 2
+        @test table["popsize_1"][2] == 2.0
+        @test table["popsize_2"][2] == 2.5
+        # Second community, species 1
+        @test table["popsize_1"][3] == 1.2
+        @test table["popsize_2"][3] == 1.6
+        # Second community, species 2
+        @test table["popsize_1"][4] == 2.2
+        @test table["popsize_2"][4] == 2.6
+    end
+
+
+    @testset "testing_historyToTable_with_multidimensional_traits" begin
+        # Create history with 2D trait space
+        T = Float64
+        ph1 = Phenotype([0.1, 0.5])
+        ph2 = Phenotype([0.2, 0.6])
+        ps = PopulationSize([1.0])
+        comm1 = Community([Species(ps, ph1), Species(ps, ph2)], PopulationSize{T}[])
+
+        ph3 = Phenotype([0.15, 0.55])
+        comm2 = Community([Species(ps, ph3)], PopulationSize{T}[], 3.0)
+
+        history = EvoHistory([comm1, comm2])
+        table = historyToTable(history)
+
+        # Check both trait dimensions (3 rows total: 2 species + 1 species)
+        @test haskey(table, "trait_1")
+        @test haskey(table, "trait_2")
+        @test length(table["mutNo"]) == 3
+
+        # First community, species 1
+        @test table["trait_1"][1] == 0.1
+        @test table["trait_2"][1] == 0.5
+        # First community, species 2
+        @test table["trait_1"][2] == 0.2
+        @test table["trait_2"][2] == 0.6
+        # Second community, species 1
+        @test table["trait_1"][3] == 0.15
+        @test table["trait_2"][3] == 0.55
+    end
+
+
+    @testset "testing_historyToTable_with_auxiliary_variables" begin
+        # Create history with auxiliary variables
+        T = Float64
+        ps = PopulationSize([1.0])
+        ph = Phenotype([0.1])
+        aux1 = [PopulationSize([10.0, 20.0])]
+        comm1 = Community([Species(ps, ph)], aux1)
+
+        aux2 = [PopulationSize([15.0, 25.0])]
+        comm2 = Community([Species(ps, ph)], aux2, 2.0)
+
+        history = EvoHistory([comm1, comm2])
+        table = historyToTable(history)
+
+        # Check auxiliary variable columns (2 rows total: 1 species × 2 events)
+        @test haskey(table, "aux_1_1")
+        @test haskey(table, "aux_1_2")
+        @test length(table["mutNo"]) == 2
+        # Aux variables are repeated for each species row
+        @test table["aux_1_1"] == [10.0, 15.0]
+        @test table["aux_1_2"] == [20.0, 25.0]
+    end
+
+
+    @testset "testing_historyToTable_empty_history_error" begin
+        # Test that empty history throws error
+        history = EvoHistory(Community{Float64, 0}[])
+        @test_throws ArgumentError historyToTable(history)
+    end
+
+
+    @testset "testing_historyToTable_all_extinct" begin
+        # Test with a step where all species go extinct
+        T = Float64
+        comm1 = Community([1.0, 2.0], [0.1, 0.2], Float64[])
+        comm2 = Community(Species{T}[], PopulationSize{T}[], 5.0)  # All extinct
+
+        sp1 = Species(PopulationSize([1.5]), Phenotype([0.15]))
+        comm3 = Community([sp1], PopulationSize{T}[], 10.0)  # One survivor
+
+        history = EvoHistory([comm1, comm2, comm3])
+        table = historyToTable(history)
+
+        # Only 3 rows total: 2 from comm1, 0 from comm2, 1 from comm3
+        @test length(table["mutNo"]) == 3
+        @test haskey(table, "popsize_1")
+
+        # First community: 2 species
+        @test table["mutNo"][1:2] == [0, 0]
+        @test table["species"][1:2] == [1, 2]
+        @test table["popsize_1"][1:2] == [1.0, 2.0]
+
+        # Second community contributes no rows (all extinct)
+        # Third community: 1 species
+        @test table["mutNo"][3] == 2
+        @test table["species"][3] == 1
+        @test table["popsize_1"][3] == 1.5
+    end
+
 end
