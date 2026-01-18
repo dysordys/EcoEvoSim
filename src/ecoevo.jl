@@ -4,7 +4,6 @@ using Distributions
 using LinearAlgebra
 using DifferentialEquations
 using Pipe
-using ProgressMeter
 
 
 struct IntegrationParams{T<:Real, Alg}
@@ -341,17 +340,26 @@ function evolve!(
     currentComm = history.history[end]
 
     # Perform nMutEvents evolutionary steps
-    progress = showProgress ? Progress(nMutEvents, dt=0.5) : nothing
-    for _ in 1:nMutEvents
+    if showProgress
+        println("Running evolutionary simulation...")
+        print_interval = max(1, div(nMutEvents, 100))  # Update every ~1%
+    end
+
+    for i in 1:nMutEvents
         # Apply one evolutionary step (mutant addition → dynamics → extinction removal)
         currentComm = singleEvoStep(currentComm, config)
 
         # Append to history
         push!(history.history, currentComm)
 
-        # Update progress bar
-        showProgress && next!(progress)
+        # Update progress indicator
+        if showProgress && (i % print_interval == 0 || i == nMutEvents)
+            pct = round(100 * i / nMutEvents, digits=1)
+            print("\rProgress: $i / $nMutEvents ($pct%)")
+            flush(stdout)
+        end
     end
+    showProgress && println()  # New line after completion
 
     return nothing
 end

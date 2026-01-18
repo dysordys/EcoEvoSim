@@ -23,7 +23,7 @@ export PopulationSize, Phenotype, Species, Community, EvoHistory,
        traitSpaceDim, addSpecies, removeSpecies, changePopsizes, changeTraits,
        orderByTrait, emptyCommunity, emptyEvoHistory, IntegrationParams, EcoEvoConfig,
        generateMutant, generateMutantWeighted, ecoDyn, singleEvoStep, evolve!,
-       unpackCommunity, packCommunity, lotkaVolterra, plotEvo
+       unpackCommunity, packCommunity, lotkaVolterra, plotEvo, niceTickInterval
 
 
 end # module EcoEvoSim

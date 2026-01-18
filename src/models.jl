@@ -65,12 +65,7 @@ function lotkaVolterra(growthRateFn, interactionFn)
         spTraits = [traits(community, i)[1] for i in 1:nSpecies]
 
         # Compute intrinsic growth rates using the provided function
-        b = growthRateFn(spTraits)
-
-        # Validate that growth rates match species count
-        length(b) == nSpecies || throw(ArgumentError(
-            "growthRateFn must return a vector of length $(nSpecies), got $(length(b))"
-        ))
+        b = [growthRateFn(spTraits[i]) for i in 1:nSpecies]
 
         # Precompute interaction coefficient matrix using the provided function
         A = zeros(T, nSpecies, nSpecies)
@@ -83,7 +78,7 @@ function lotkaVolterra(growthRateFn, interactionFn)
         # Return the dynamics function with proper signature for ODEProblem
         # Note: We can safely close over A and b because this function is recreated
         # for each new community in ecoDyn (which calls config.ecoDyn(community))
-        return (u, p, t) -> u .* (b .- A * u)
+        return (u, p, t) -> u .* (b .+ (A * u))
     end
 
     return createDynamics

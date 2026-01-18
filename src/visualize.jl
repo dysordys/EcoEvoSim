@@ -4,6 +4,50 @@ using Plots
 
 
 """
+    niceTickInterval(maxValue::Real, targetTicks::Int=10)
+
+Calculate a human-readable tick interval for axis labels.
+
+Returns an interval rounded to (1, 2, or 5) × 10^n that produces approximately
+`targetTicks` tick marks between 0 and `maxValue`.
+
+# Arguments
+- `maxValue::Real`: The maximum value on the axis
+- `targetTicks::Int=10`: Approximate number of tick marks desired
+
+# Returns
+- `Int`: A nice round interval for tick marks
+
+# Example
+```julia
+niceTickInterval(1500)  # Returns 200 (gives ticks: 0, 200, 400, ..., 1400, 1600)
+niceTickInterval(95000) # Returns 10000 (gives ticks: 0, 10000, 20000, ..., 90000)
+```
+"""
+function niceTickInterval(maxValue::Real, targetTicks::Int=6)
+    targetTicks > 0 || throw(ArgumentError("targetTicks must be positive"))
+    maxValue >= 0 || throw(ArgumentError("maxValue must be non-negative"))
+
+    approximate_interval = maxValue / targetTicks
+    magnitude = 10.0 ^ floor(log10(max(approximate_interval, 1)))
+
+    # Choose the nicest multiplier (1, 2, or 5) for this magnitude
+    ratio = approximate_interval / magnitude
+    tick_step = if ratio <= 1.5
+        magnitude
+    elseif ratio <= 3.5
+        2 * magnitude
+    elseif ratio <= 7.5
+        5 * magnitude
+    else
+        10 * magnitude
+    end
+
+    return Int(round(tick_step))
+end
+
+
+"""
     plotEvo(history::EvoHistory; kwargs...)
 
 Visualize evolutionary dynamics over time for systems with 1-dimensional trait space.
@@ -15,12 +59,12 @@ indicated by color only.
 - `history::EvoHistory`: The evolutionary history to visualize
 
 # Keyword Arguments
-- `colormap::Symbol = :viridis`: Color scheme for population densities
+- `colormap = cgrad([RGB(0.92, 0.92, 0.92), :navy])`: Color scheme for population sizes
 - `markersize::Real = 5.0`: Size of markers
 - `alpha::Real = 0.7`: Transparency of markers
 - `xlabel::String = "Trait value"`: Label for x-axis
-- `ylabel::String = "Mutation step"`: Label for y-axis
-- `title::String = "Evolutionary Dynamics"`: Plot title
+- `ylabel::String = "Mutation event"`: Label for y-axis
+- `title::Union{String, Nothing} = nothing`: Plot title
 - `size::Tuple = (800, 600)`: Figure size
 - `legend::Bool = true`: Whether to show legend
 
@@ -45,12 +89,12 @@ Throws an `ArgumentError` if the trait space is not 1-dimensional.
 """
 function plotEvo(
         history::EvoHistory{T, AuxClasses};
-        colormap::Symbol = :viridis,
-        markersize::Real = 5.0,
+        colormap = cgrad([RGB(0.92, 0.92, 0.92), :navy]),
+        markersize::Real = 3.0,
         alpha::Real = 0.7,
         xlabel::String = "Trait value",
-        ylabel::String = "Mutation step",
-        title::String = "Evolutionary Dynamics",
+        ylabel::String = "Mutation event",
+        title::Union{String, Nothing} = nothing,
         size::Tuple = (800, 600),
         legend::Bool = true
     ) where {T<:Real, AuxClasses}
@@ -98,9 +142,7 @@ function plotEvo(
     end
 
     # Create plot with fixed marker size
-    p = scatter(
-        allTraits,
-        allTimes,
+    plot_kwargs = (
         marker_z = allPopsizes,
         color = colormap,
         markersize = markersize,
@@ -108,16 +150,23 @@ function plotEvo(
         alpha = alpha,
         xlabel = xlabel,
         ylabel = ylabel,
-        title = title,
         size = size,
         legend = legend ? :right : false,
         colorbar = legend,
-        colorbar_title = legend ? "Population\nsize" : "",
+        colorbar_title = legend ? "Population size" : "",
         label = ""
     )
 
-    # Set y-axis to show mutation steps
-    plot!(p, yticks = 1:max(1, div(nSteps, 10)):nSteps)
+    # Add title only if not nothing
+    if title !== nothing
+        plot_kwargs = merge(plot_kwargs, (title = title,))
+    end
+
+    p = scatter(allTraits, allTimes; plot_kwargs...)
+
+    # Set y-axis to show mutation steps with nice round intervals
+    tick_step = niceTickInterval(nSteps)
+    plot!(p, yticks = 0:tick_step:nSteps)
 
     return p
 end

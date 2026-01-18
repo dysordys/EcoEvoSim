@@ -8,13 +8,13 @@ using LinearAlgebra
     @testset "testing_lotkaVolterra_basic_functionality" begin
         # Define simple growth and interaction functions
         growthFn = traits -> 1.0 .- traits.^2
-        interactionFn = (z_i, z_j) -> exp(-((z_i - z_j) / 0.15)^2)
+        kernelFn = (z_i, z_j) -> -exp(-((z_i - z_j) / 0.15)^2)
 
         # Create a community
         comm = Community([1.0, 1.0, 1.0], [-0.2, 0.0, 0.3], Float64[])
 
         # Create the dynamics function
-        ecoDynFn = lotkaVolterra(growthFn, interactionFn)(comm)
+        ecoDynFn = lotkaVolterra(growthFn, kernelFn)(comm)
 
         # Check that it returns a function
         @test ecoDynFn isa Function
@@ -35,11 +35,11 @@ using LinearAlgebra
 
     @testset "testing_lotkaVolterra_with_single_species" begin
         # Single species with positive growth
-        growthFn = traits -> [0.5]
-        interactionFn = (z_i, z_j) -> 1.0
+        growthFn = z -> 0.5
+        kernelFn = (z_i, z_j) -> -1.0
 
         comm = Community([1.0], [0.0], Float64[])
-        ecoDynFn = lotkaVolterra(growthFn, interactionFn)(comm)
+        ecoDynFn = lotkaVolterra(growthFn, kernelFn)(comm)
 
         # At low density, should grow approximately at intrinsic rate
         u = [0.1]
@@ -56,11 +56,11 @@ using LinearAlgebra
 
     @testset "testing_lotkaVolterra_two_species_competition" begin
         # Two species with identical traits (strong competition)
-        growthFn = traits -> [1.0, 1.0]
-        interactionFn = (z_i, z_j) -> 1.0  # Equal competition
+        growthFn = z -> 1.0
+        kernelFn = (z_i, z_j) -> -1.0  # Equal competition
 
         comm = Community([0.5, 0.5], [0.0, 0.0], Float64[])
-        ecoDynFn = lotkaVolterra(growthFn, interactionFn)(comm)
+        ecoDynFn = lotkaVolterra(growthFn, kernelFn)(comm)
 
         u = [0.5, 0.5]
         dudt = ecoDynFn(u, nothing, 0.0)
@@ -73,11 +73,11 @@ using LinearAlgebra
 
     @testset "testing_lotkaVolterra_trait_dependent_growth" begin
         # Growth rate depends on trait value
-        growthFn = traits -> 1.0 .- traits.^2
-        interactionFn = (z_i, z_j) -> 0.5  # Weak competition
+        growthFn = z -> 1.0 - z^2
+        kernelFn = (z_i, z_j) -> -0.5  # Weak competition
 
         comm = Community([1.0, 1.0], [0.0, 0.5], Float64[])
-        ecoDynFn = lotkaVolterra(growthFn, interactionFn)(comm)
+        ecoDynFn = lotkaVolterra(growthFn, kernelFn)(comm)
 
         u = [0.1, 0.1]
         dudt = ecoDynFn(u, nothing, 0.0)
@@ -94,13 +94,13 @@ using LinearAlgebra
 
     @testset "testing_lotkaVolterra_trait_dependent_competition" begin
         # Competition depends on trait distance (niche differentiation)
-        growthFn = traits -> ones(length(traits))
+        growthFn = z -> 1.0
         competitionWidth = 0.2
-        interactionFn = (z_i, z_j) -> exp(-((z_i - z_j) / competitionWidth)^2)
+        kernelFn = (z_i, z_j) -> -exp(-((z_i - z_j) / competitionWidth)^2)
 
         # Two species with different traits
         comm = Community([1.0, 1.0], [-0.3, 0.3], Float64[])
-        ecoDynFn = lotkaVolterra(growthFn, interactionFn)(comm)
+        ecoDynFn = lotkaVolterra(growthFn, kernelFn)(comm)
 
         u = [0.5, 0.5]
         dudt = ecoDynFn(u, nothing, 0.0)
@@ -118,33 +118,21 @@ using LinearAlgebra
     end
 
 
-    @testset "testing_lotkaVolterra_growth_rate_validation" begin
-        # Growth function returns wrong number of values
-        growthFn_wrong = traits -> [1.0]  # Only returns 1 value
-        interactionFn = (z_i, z_j) -> 1.0
-
-        comm = Community([1.0, 1.0], [0.0, 0.5], Float64[])
-
-        # Should throw ArgumentError
-        @test_throws ArgumentError lotkaVolterra(growthFn_wrong, interactionFn)(comm)
-    end
-
-
     @testset "testing_lotkaVolterra_integration_with_EcoEvoConfig" begin
         # Test full integration with EcoEvoConfig
-        growthFn = traits -> 1.0 .- traits.^2
-        interactionFn = (z_i, z_j) -> exp(-((z_i - z_j) / 0.15)^2)
+        growthFn = z -> 1.0 - z^2
+        kernelFn = (z_i, z_j) -> -exp(-((z_i - z_j) / 0.15)^2)
 
         comm = Community([1.0, 1.0, 1.0], [-0.2, 0.0, 0.3], Float64[])
-        ecoDynFactory = lotkaVolterra(growthFn, interactionFn)
+        ecoDynFactory = lotkaVolterra(growthFn, kernelFn)
 
         # Create a valid EcoEvoConfig
         config = EcoEvoConfig(
-            ecoDynFactory,
-            (x) -> x .+ 0.01,
-            IntegrationParams(maxTime = 10.0),
-            0.001,
-            0.003
+            ecoDyn = ecoDynFactory,
+            mutationGenerator = (x) -> x .+ 0.01,
+            integrationParams = IntegrationParams(maxTime = 10.0),
+            invaderPopsize = 0.001,
+            extThreshold = 0.003
         )
 
         @test config.ecoDyn === ecoDynFactory
@@ -160,11 +148,11 @@ using LinearAlgebra
 
     @testset "testing_lotkaVolterra_with_keyword_constructor" begin
         # Test using keyword constructor for EcoEvoConfig
-        growthFn = traits -> 1.0 .- traits.^2
-        interactionFn = (z_i, z_j) -> exp(-((z_i - z_j) / 0.15)^2)
+        growthFn = z -> 1.0 - z^2
+        kernelFn = (z_i, z_j) -> -exp(-((z_i - z_j) / 0.15)^2)
 
         comm = Community([1.0, 1.0], [0.0, 0.5], Float64[])
-        ecoDynFactory = lotkaVolterra(growthFn, interactionFn)
+        ecoDynFactory = lotkaVolterra(growthFn, kernelFn)
 
         # Use keyword constructor
         config = EcoEvoConfig(
@@ -183,11 +171,11 @@ using LinearAlgebra
 
     @testset "testing_lotkaVolterra_different_numeric_types" begin
         # Test with Float32
-        growthFn = traits -> Float32.(1.0 .- traits.^2)
-        interactionFn = (z_i, z_j) -> Float32(exp(-((z_i - z_j) / 0.15)^2))
+        growthFn = z -> Float32(1.0 - z^2)
+        kernelFn = (z_i, z_j) -> -Float32(exp(-((z_i - z_j) / 0.15)^2))
 
         comm = Community(Float32[1.0, 1.0], Float32[0.0, 0.5], Float32[])
-        ecoDynFn = lotkaVolterra(growthFn, interactionFn)(comm)
+        ecoDynFn = lotkaVolterra(growthFn, kernelFn)(comm)
 
         u = Float32[0.5, 0.5]
         dudt = ecoDynFn(u, nothing, 0.0)
@@ -198,11 +186,11 @@ using LinearAlgebra
 
     @testset "testing_lotkaVolterra_zero_population" begin
         # Test behavior with zero populations
-        growthFn = traits -> [1.0, 1.0]
-        interactionFn = (z_i, z_j) -> 1.0
+        growthFn = z -> 1.0
+        kernelFn = (z_i, z_j) -> -1.0
 
         comm = Community([1.0, 1.0], [0.0, 0.5], Float64[])
-        ecoDynFn = lotkaVolterra(growthFn, interactionFn)(comm)
+        ecoDynFn = lotkaVolterra(growthFn, kernelFn)(comm)
 
         # One species at zero
         u = [0.0, 0.5]

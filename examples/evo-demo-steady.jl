@@ -3,14 +3,14 @@ using Plots
 using DifferentialEquations
 
 # Create a simple evolutionary simulation
-growthFn = (z) -> @. (tanh((z - 0.5) / 0.2) + 1) / 2 - 0.006692851
-interactionFn = (z_i, z_j) -> (tanh((z_i - z_j) / 0.1) + 1) / 2
+growthFn = (z) -> z^2 / (3 + z^2)
+kernelFn = (zi, zj) -> -(tanh((zi - zj) / 0.3) + 1) / 2
 
 community = Community([1.0], [0.3], Float64[])
 
 config = EcoEvoConfig(
-    ecoDyn = lotkaVolterra(growthFn, interactionFn),
-    mutationGenerator = (c, cfg) -> generateMutant(c, cfg, 4.0e-6),
+    ecoDyn = lotkaVolterra(growthFn, kernelFn),
+    mutationGenerator = (c, cfg) -> generateMutant(c, cfg, 0.002^2),
     integrationParams = IntegrationParams(
         maxTime = Inf,   # No timeout for steady-state solver
         algorithm = DynamicSS(),
@@ -18,10 +18,10 @@ config = EcoEvoConfig(
         reltol = 1e-8    # Relative tolerance for steady state
     ),
     invaderPopsize = 1e-3,
-    extThreshold = 1e-3
+    extThreshold = 3e-3
 )
 
-history = evolve!(community, config, 15000)
+history = evolve!(community, config, 8000)
 
 p = plotEvo(history)
-savefig(p, "test_plotEvo_steady.png")
+# savefig(p, "test_plotEvo_steady.png")
