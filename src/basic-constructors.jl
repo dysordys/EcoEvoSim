@@ -114,11 +114,45 @@ function EvoHistory(
 end
 
 
+"""
+    emptyCommunity(T::Type{<:Real} = Float64)
+
+Create an empty community with no species and no auxiliary variables.
+
+# Arguments
+- `T::Type{<:Real}`: Numeric type for the community (default: `Float64`)
+
+# Returns
+- `Community{T, 0}`: Empty community at time zero
+
+# Example
+```julia
+comm = emptyCommunity()
+comm = emptyCommunity(Float32)
+```
+"""
 function emptyCommunity(T::Type{<:Real} = Float64)
     Community{T, 0}(Species{T}[], PopulationSize{T}[], zero(T))
 end
 
 
+"""
+    emptyEvoHistory(T::Type{<:Real} = Float64)
+
+Create an empty evolutionary history containing only an empty community.
+
+# Arguments
+- `T::Type{<:Real}`: Numeric type for the history (default: `Float64`)
+
+# Returns
+- `EvoHistory{T, 0}`: History with a single empty community
+
+# Example
+```julia
+history = emptyEvoHistory()
+history = emptyEvoHistory(Float32)
+```
+"""
 function emptyEvoHistory(T::Type{<:Real} = Float64)
     EvoHistory{T, 0}([emptyCommunity(T)])
 end

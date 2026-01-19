@@ -1,5 +1,30 @@
 # Add a species to an existing community
 
+"""
+    addSpecies(comm::Community, sp::Species)
+    addSpecies(sp::Species, comm::Community)
+    addSpecies(comm::Community, species_vec::Vector)
+    addSpecies(species_vec::Vector, comm::Community)
+
+Add one or more species to an existing community.
+
+Creates a new community with the added species. Preserves auxiliary variables and time.
+
+# Arguments
+- `comm::Community`: The community to add to
+- `sp::Species`: Single species to add
+- `species_vec::Vector`: Multiple species to add
+
+# Returns
+New community with added species
+
+# Example
+```julia
+comm = Community([1.0, 2.0], [0.1, 0.2], Float64[])
+new_sp = Species(1.0, 0.5)
+comm2 = addSpecies(comm, new_sp)
+```
+"""
 function addSpecies(comm::Community, sp::Species)
     newSpeciesList = [speciesList(comm); sp]
     Community(newSpeciesList, auxs(comm), comm.time)
@@ -25,6 +50,31 @@ end
 
 # Change population sizes in a community
 
+"""
+    changePopsizes(comm::Community, newPopsizes::AbstractVector)
+    changePopsizes(comm::Community, newPopsizes::AbstractMatrix)
+
+Update population sizes for all species in a community.
+
+# Arguments
+- `comm::Community`: The community to update
+- `newPopsizes::AbstractVector`: New population sizes (for single stage class)
+- `newPopsizes::AbstractMatrix`: New population sizes (rows=species, cols=stage classes)
+
+# Returns
+New community with updated population sizes
+
+# Example
+```julia
+comm = Community([1.0, 2.0, 3.0], [0.1, 0.2, 0.3], Float64[])
+# Single stage class
+comm2 = changePopsizes(comm, [2.0, 3.0, 4.0])
+
+# Multiple stage classes (2 species, 2 stage classes each)
+comm_stages = Community(Species([1.0, 2.0], [0.1, 0.2]), emptyCommunity().aux, 0.0)
+comm2 = changePopsizes(comm_stages, [1.5 2.5; 3.5 4.5])
+```
+"""
 function changePopsizes(
         comm::Community{T, AuxClasses},
         newPopsizes::AbstractVector{T}
@@ -84,6 +134,31 @@ end
 
 # Change traits in a community
 
+"""
+    changeTraits(comm::Community, newTraits::AbstractVector)
+    changeTraits(comm::Community, newTraits::AbstractMatrix)
+
+Update trait values for all species in a community.
+
+# Arguments
+- `comm::Community`: The community to update
+- `newTraits::AbstractVector`: New trait values (for 1D trait space)
+- `newTraits::AbstractMatrix`: New trait values (rows=species, cols=trait dimensions)
+
+# Returns
+New community with updated traits
+
+# Example
+```julia
+comm = Community([1.0, 2.0, 3.0], [0.1, 0.2, 0.3], Float64[])
+# 1D trait space
+comm2 = changeTraits(comm, [0.15, 0.25, 0.35])
+
+# Multidimensional trait space (2 species, 2 trait dimensions)
+comm_multi = Community([1.0, 2.0], [[0.1, 0.5], [0.2, 0.6]])
+comm2 = changeTraits(comm_multi, [0.15 0.55; 0.25 0.65])
+```
+"""
 function changeTraits(
         comm::Community{T, AuxClasses},
         newTraits::AbstractVector{T}
@@ -143,6 +218,27 @@ end
 
 # Remove species from a community
 
+"""
+    removeSpecies(comm::Community, index::Integer)
+    removeSpecies(comm::Community, indices)
+
+Remove one or more species from a community.
+
+# Arguments
+- `comm::Community`: The community
+- `index::Integer`: Single species index to remove
+- `indices`: Collection of species indices to remove
+
+# Returns
+New community with specified species removed
+
+# Example
+```julia
+comm = Community([1.0, 2.0, 3.0], [0.1, 0.2, 0.3], Float64[])
+comm2 = removeSpecies(comm, 2)
+comm3 = removeSpecies(comm, [1, 3])
+```
+"""
 function removeSpecies(comm::Community, index::Integer)
     numSp = numSpecies(comm)
     1 <= index <= numSp || throw(ArgumentError(
@@ -204,6 +300,24 @@ end
 
 # Remove extinct species (those below the extinction threshold)
 
+"""
+    removeExtinct(comm::Community, extThreshold::Real)
+
+Remove all species with total population size below the extinction threshold.
+
+# Arguments
+- `comm::Community`: The community
+- `extThreshold::Real`: Extinction threshold (non-negative)
+
+# Returns
+New community with extinct species removed
+
+# Example
+```julia
+comm = Community([0.001, 2.0, 0.005, 3.0], [0.1, 0.2, 0.3, 0.4], Float64[])
+comm2 = removeExtinct(comm, 0.01)  # Keeps only species 2 and 4
+```
+"""
 function removeExtinct(comm::Community, extThreshold::Real)
     indices_to_remove = speciesBelowThreshold(comm, extThreshold)
 
@@ -218,6 +332,29 @@ end
 
 # Order species by trait component
 
+"""
+    orderByTrait(comm::Community)
+    orderByTrait(comm::Community, n::Integer)
+
+Sort species in a community by trait value.
+
+# Arguments
+- `comm::Community`: The community to sort
+- `n::Integer`: Trait dimension to sort by (default: 1)
+
+# Returns
+New community with species sorted in ascending order by the specified trait
+
+# Example
+```julia
+comm = Community([1.0, 2.0, 3.0], [0.3, 0.1, 0.2], Float64[])
+sorted_comm = orderByTrait(comm)  # Sorts by trait: species order becomes [2, 3, 1]
+
+# For multidimensional traits
+comm_multi = Community([1.0, 2.0], [[0.5, 0.9], [0.3, 0.7]])
+sorted_comm2 = orderByTrait(comm_multi, 2)  # Sort by second trait dimension
+```
+"""
 function orderByTrait(comm::Community, n::Integer)
     numSp = numSpecies(comm)
 

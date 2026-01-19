@@ -6,6 +6,29 @@ using DifferentialEquations
 using Pipe
 
 
+"""
+    IntegrationParams{T<:Real, Alg}
+
+Parameters for ODE integration during ecological dynamics.
+
+# Fields
+- `maxTime::T`: Maximum integration time
+- `algorithm::Alg`: DifferentialEquations.jl solver algorithm (e.g., `Rodas5()`, `DynamicSS()`)
+- `solver_options::NamedTuple`: Keyword arguments for `solve()` (e.g., `abstol`, `reltol`)
+
+# Constructors
+```julia
+# Default constructor with Rodas5 solver
+params = IntegrationParams(maxTime = 50.0)
+
+# Custom solver and tolerances
+params = IntegrationParams(maxTime = 100.0, algorithm = Tsit5(),
+                          abstol = 1e-10, reltol = 1e-8)
+
+# Steady-state solver
+params = IntegrationParams(maxTime = 100.0, algorithm = DynamicSS())
+```
+"""
 struct IntegrationParams{T<:Real, Alg}
     maxTime :: T
     algorithm :: Alg  # ODE solver algorithm
@@ -37,6 +60,29 @@ function IntegrationParams(; maxTime::T,
 end
 
 
+"""
+    EcoEvoConfig{T<:Real, EcoDynamics, MutGenerator, Alg}
+
+Configuration for eco-evolutionary simulations.
+
+# Fields
+- `ecoDyn::EcoDynamics`: Factory function taking `Community` and returning ODE function
+- `mutationGenerator::MutGenerator`: Function generating mutants from community and config
+- `integrationParams::IntegrationParams`: ODE integration parameters
+- `invaderPopsize::T`: Initial population size for new mutants
+- `extThreshold::T`: Population size below which species go extinct
+
+# Example
+```julia
+config = EcoEvoConfig(
+    ecoDyn = lotkaVolterra(growthFn, interactionFn),
+    mutationGenerator = (comm, cfg) -> generateMutant(comm, cfg, 0.01),
+    integrationParams = IntegrationParams(maxTime = 50.0),
+    invaderPopsize = 0.001,
+    extThreshold = 0.003
+)
+```
+"""
 struct EcoEvoConfig{T<:Real, EcoDynamics, MutGenerator, Alg}
     ecoDyn :: EcoDynamics  # Factory function: Community -> (u, p, t) -> du
     mutationGenerator :: MutGenerator   # Function generating mutant traits
