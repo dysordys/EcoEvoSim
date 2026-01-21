@@ -1,5 +1,6 @@
 using Test
 using EcoEvoSim
+using Random
 
 
 numTests = 50
@@ -315,6 +316,254 @@ numTests = 50
         @test traits(comm_ordered, 1)[1] ≈ 0.1
         @test traits(comm_ordered, 2)[1] ≈ 0.2
         @test traits(comm_ordered, 3)[1] ≈ 0.3
+    end
+
+
+    @testset "testing_selectTraitDim" begin
+        for _ in 1:numTests
+            T = Float64
+            auxClasses = rand(0:3)
+            numSp = rand(2:5)
+            traitDim = rand(2:4)
+
+            # Create community with multidimensional traits
+            sps = Species{T}[]
+            trait_matrix = rand(T, numSp, traitDim)
+            for i in 1:numSp
+                ps = PopulationSize(rand(T, rand(1:3)))
+                ph = Phenotype(Vector{T}(trait_matrix[i, :]))
+                push!(sps, Species(ps, ph))
+            end
+            aux = [PopulationSize(rand(T)) for _ in 1:auxClasses]
+            time = rand(T)
+            comm = Community(sps, aux, time)
+
+            # Test selecting each trait dimension
+            for dimIndex in 1:traitDim
+                comm_selected = selectTraitDim(comm, dimIndex)
+
+                # Check that the trait space is now 1-dimensional
+                @test traitSpaceDim(comm_selected) == 1
+
+                # Check that each species has the correct trait value
+                for i in 1:numSp
+                    selected_trait = traits(comm_selected, i)[1]
+                    original_trait = trait_matrix[i, dimIndex]
+                    @test selected_trait ≈ original_trait
+                end
+
+                # Check that population sizes are preserved
+                for i in 1:numSp
+                    @test popsizes(comm_selected, i) == popsizes(comm, i)
+                end
+
+                # Check that auxiliaries and time are preserved
+                @test auxs(comm_selected) == aux
+                @test comm_selected.time == time
+
+                # Check number of species is preserved
+                @test numSpecies(comm_selected) == numSp
+            end
+        end
+    end
+
+
+    @testset "testing_selectTraitDim_1D_traits" begin
+        # Test that selectTraitDim works correctly with 1D traits
+        T = Float64
+        for _ in 1:numTests
+            numSp = rand(2:5)
+            sps = Species{T}[]
+            trait_vals = rand(T, numSp)
+            for i in 1:numSp
+                ps = PopulationSize(rand(T, rand(1:3)))
+                ph = Phenotype(trait_vals[i])
+                push!(sps, Species(ps, ph))
+            end
+            comm = Community(sps, PopulationSize{T}[])
+
+            # Selecting the first (only) dimension should preserve the community structure
+            comm_selected = selectTraitDim(comm, 1)
+
+            @test traitSpaceDim(comm_selected) == 1
+            @test numSpecies(comm_selected) == numSp
+            for i in 1:numSp
+                @test traits(comm_selected, i)[1] ≈ trait_vals[i]
+                @test popsizes(comm_selected, i) == popsizes(comm, i)
+            end
+        end
+    end
+
+
+    @testset "testing_selectTraitDim_edge_cases" begin
+        T = Float64
+
+        # Test with empty community
+        empty_comm = Community(Species{T}[], PopulationSize{T}[])
+        @test_throws ArgumentError selectTraitDim(empty_comm, 1)
+
+        # Test with invalid dimension index (too small)
+        ps = PopulationSize([1.0])
+        ph = Phenotype([0.5, 0.3, 0.8])
+        comm = Community([Species(ps, ph)], PopulationSize{T}[])
+        @test_throws ArgumentError selectTraitDim(comm, 0)
+
+        # Test with invalid dimension index (too large)
+        @test_throws ArgumentError selectTraitDim(comm, 4)
+
+        # Test with valid dimension indices
+        comm1 = selectTraitDim(comm, 1)
+        @test traits(comm1, 1)[1] ≈ 0.5
+
+        comm2 = selectTraitDim(comm, 2)
+        @test traits(comm2, 1)[1] ≈ 0.3
+
+        comm3 = selectTraitDim(comm, 3)
+        @test traits(comm3, 1)[1] ≈ 0.8
+    end
+
+
+    @testset "testing_selectTraitDim_with_multiple_stage_classes" begin
+        # Test that selectTraitDim preserves multiple stage classes correctly
+        T = Float64
+        for _ in 1:numTests
+            numSp = rand(2:4)
+            numStageClasses = rand(2:3)
+            traitDim = rand(2:4)
+
+            sps = Species{T}[]
+            for i in 1:numSp
+                ps = PopulationSize(rand(T, numStageClasses))
+                ph = Phenotype(rand(T, traitDim))
+                push!(sps, Species(ps, ph))
+            end
+            comm = Community(sps, PopulationSize{T}[])
+
+            # Select each trait dimension and verify stage classes are preserved
+            for dimIndex in 1:traitDim
+                comm_selected = selectTraitDim(comm, dimIndex)
+
+                for i in 1:numSp
+                    original_popsize = popsizes(comm, i)
+                    selected_popsize = popsizes(comm_selected, i)
+                    @test length(selected_popsize) == numStageClasses
+                    @test selected_popsize ≈ original_popsize
+                end
+            end
+        end
+    end
+
+
+    @testset "testing_selectTraitDim_multiple_dimensions" begin
+        T = Float64
+        for _ in 1:numTests
+            numSp = rand(2:5)
+            traitDim = rand(3:5)
+
+            # Create community with multidimensional traits
+            sps = Species{T}[]
+            trait_matrix = rand(T, numSp, traitDim)
+            for i in 1:numSp
+                ps = PopulationSize(rand(T, rand(1:3)))
+                ph = Phenotype(Vector{T}(trait_matrix[i, :]))
+                push!(sps, Species(ps, ph))
+            end
+            aux = [PopulationSize(rand(T)) for _ in 1:rand(0:2)]
+            time = rand(T)
+            comm = Community(sps, aux, time)
+
+            # Test selecting multiple dimensions
+            numDimsToSelect = rand(2:traitDim-1)
+            dimIndices = sort(randperm(traitDim)[1:numDimsToSelect])
+
+            comm_selected = selectTraitDim(comm, dimIndices)
+
+            # Check that the trait space has correct dimensionality
+            @test traitSpaceDim(comm_selected) == numDimsToSelect
+
+            # Check that each species has the correct trait values
+            for i in 1:numSp
+                selected_traits = traits(comm_selected, i)
+                @test length(selected_traits) == numDimsToSelect
+                for (j, dimIdx) in enumerate(dimIndices)
+                    @test selected_traits[j] ≈ trait_matrix[i, dimIdx]
+                end
+            end
+
+            # Check that population sizes are preserved
+            for i in 1:numSp
+                @test popsizes(comm_selected, i) == popsizes(comm, i)
+            end
+
+            # Check that auxiliaries and time are preserved
+            @test auxs(comm_selected) == aux
+            @test comm_selected.time == time
+
+            # Check number of species is preserved
+            @test numSpecies(comm_selected) == numSp
+        end
+    end
+
+
+    @testset "testing_selectTraitDim_multiple_dimensions_reordering" begin
+        # Test that dimension reordering works correctly
+        T = Float64
+        ps = PopulationSize([1.0])
+        ph = Phenotype([0.1, 0.2, 0.3, 0.4, 0.5])
+        comm = Community([Species(ps, ph)], PopulationSize{T}[])
+
+        # Select dimensions in reverse order
+        comm_rev = selectTraitDim(comm, [5, 4, 3, 2, 1])
+        @test traitSpaceDim(comm_rev) == 5
+        @test traits(comm_rev, 1) ≈ [0.5, 0.4, 0.3, 0.2, 0.1]
+
+        # Select non-contiguous dimensions
+        comm_noncontig = selectTraitDim(comm, [1, 3, 5])
+        @test traitSpaceDim(comm_noncontig) == 3
+        @test traits(comm_noncontig, 1) ≈ [0.1, 0.3, 0.5]
+
+        # Select same dimensions in different order
+        comm_order1 = selectTraitDim(comm, [2, 4])
+        comm_order2 = selectTraitDim(comm, [4, 2])
+        @test traits(comm_order1, 1) ≈ [0.2, 0.4]
+        @test traits(comm_order2, 1) ≈ [0.4, 0.2]
+    end
+
+
+    @testset "testing_selectTraitDim_multiple_dimensions_edge_cases" begin
+        T = Float64
+
+        # Test with empty community
+        empty_comm = Community(Species{T}[], PopulationSize{T}[])
+        @test_throws ArgumentError selectTraitDim(empty_comm, [1, 2])
+
+        # Test with empty dimension vector
+        ps = PopulationSize([1.0])
+        ph = Phenotype([0.5, 0.3, 0.8])
+        comm = Community([Species(ps, ph)], PopulationSize{T}[])
+        @test_throws ArgumentError selectTraitDim(comm, Int[])
+
+        # Test with invalid dimension index (too small)
+        @test_throws ArgumentError selectTraitDim(comm, [0, 1])
+        @test_throws ArgumentError selectTraitDim(comm, [1, 0, 2])
+
+        # Test with invalid dimension index (too large)
+        @test_throws ArgumentError selectTraitDim(comm, [1, 4])
+        @test_throws ArgumentError selectTraitDim(comm, [1, 2, 3, 4])
+
+        # Test with duplicate indices
+        @test_throws ArgumentError selectTraitDim(comm, [1, 2, 1])
+        @test_throws ArgumentError selectTraitDim(comm, [2, 2])
+
+        # Test selecting all dimensions
+        comm_all = selectTraitDim(comm, [1, 2, 3])
+        @test traitSpaceDim(comm_all) == 3
+        @test traits(comm_all, 1) ≈ [0.5, 0.3, 0.8]
+
+        # Test selecting single dimension using vector notation
+        comm_single = selectTraitDim(comm, [2])
+        @test traitSpaceDim(comm_single) == 1
+        @test traits(comm_single, 1)[1] ≈ 0.3
     end
 
 

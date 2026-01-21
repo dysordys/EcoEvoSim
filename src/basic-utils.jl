@@ -216,6 +216,130 @@ end
 
 
 
+# Extract a single trait dimension
+
+"""
+    selectTraitDim(comm::Community, dimIndex::Integer)
+
+Extract a single trait dimension from a community with multidimensional traits.
+
+Creates a new community where each species retains only the specified trait dimension.
+This is useful for visualizing or analyzing evolution along a single trait axis.
+
+# Arguments
+- `comm::Community`: The community to extract from
+- `dimIndex::Integer`: The trait dimension to retain (1-indexed)
+
+# Returns
+New community with only the specified trait dimension for each species
+
+# Example
+```julia
+# Community with 2D traits
+comm = Community([Species(1.0, [0.3, 0.5]), Species(2.0, [0.1, 0.8])],
+                 PopulationSize{Float64}[], 0.0)
+
+# Extract only the first trait dimension
+comm1D = selectTraitDim(comm, 1)  # Traits become [0.3] and [0.1]
+
+# Extract only the second trait dimension
+comm2D = selectTraitDim(comm, 2)  # Traits become [0.5] and [0.8]
+```
+"""
+function selectTraitDim(
+        comm::Community{T, AuxClasses},
+        dimIndex::Integer
+    ) where {T<:Real, AuxClasses}
+    numSp = numSpecies(comm)
+    numSp > 0 || throw(ArgumentError("Cannot select trait dimension from empty community"))
+
+    # Validate dimension index
+    traitDim = length(traits(comm, 1))
+    1 <= dimIndex <= traitDim || throw(ArgumentError(
+        "Trait dimension $dimIndex out of bounds (trait space has dimension $traitDim)"
+    ))
+
+    # Create new species with only the selected trait dimension
+    oldSpecies = speciesList(comm)
+    newSpecies = Species{T}[]
+    for sp in oldSpecies
+        traitVec = sp.trait[1].trait  # Get the trait vector
+        selectedTrait = Phenotype(traitVec[dimIndex])  # Extract single dimension
+        newSp = Species{T}(sp.popsize, [selectedTrait])
+        push!(newSpecies, newSp)
+    end
+
+    Community(newSpecies, auxs(comm), comm.time)
+end
+
+
+"""
+    selectTraitDim(comm::Community, dimIndices::AbstractVector{<:Integer})
+
+Extract multiple trait dimensions from a community with multidimensional traits.
+
+Creates a new community where each species retains only the specified trait dimensions
+in the given order. This is useful for projecting high-dimensional trait spaces onto
+lower-dimensional subspaces.
+
+# Arguments
+- `comm::Community`: The community to extract from
+- `dimIndices::AbstractVector{<:Integer}`: Vector of trait dimensions to retain (1-indexed)
+
+# Returns
+New community with only the specified trait dimensions for each species
+
+# Example
+```julia
+# Community with 4D traits
+comm = Community([Species(1.0, [0.1, 0.2, 0.3, 0.4]),
+                  Species(2.0, [0.5, 0.6, 0.7, 0.8])],
+                 PopulationSize{Float64}[], 0.0)
+
+# Extract dimensions 1 and 3
+comm2D = selectTraitDim(comm, [1, 3])  # Traits become [0.1, 0.3] and [0.5, 0.7]
+
+# Reorder dimensions
+commReordered = selectTraitDim(comm, [4, 1])  # Traits become [0.4, 0.1] and [0.8, 0.5]
+```
+"""
+function selectTraitDim(
+        comm::Community{T, AuxClasses},
+        dimIndices::AbstractVector{<:Integer}
+    ) where {T<:Real, AuxClasses}
+    numSp = numSpecies(comm)
+    numSp > 0 || throw(ArgumentError("Cannot select trait dimensions from empty community"))
+
+    length(dimIndices) > 0 || throw(ArgumentError("dimIndices must contain at least one dimension"))
+
+    # Validate all dimension indices
+    traitDim = length(traits(comm, 1))
+    for idx in dimIndices
+        1 <= idx <= traitDim || throw(ArgumentError(
+            "Trait dimension $idx out of bounds (trait space has dimension $traitDim)"
+        ))
+    end
+
+    # Check for duplicate indices
+    if length(unique(dimIndices)) != length(dimIndices)
+        throw(ArgumentError("dimIndices contains duplicate dimensions"))
+    end
+
+    # Create new species with only the selected trait dimensions
+    oldSpecies = speciesList(comm)
+    newSpecies = Species{T}[]
+    for sp in oldSpecies
+        traitVec = sp.trait[1].trait  # Get the trait vector
+        selectedTraits = [traitVec[i] for i in dimIndices]  # Extract selected dimensions
+        newTrait = Phenotype(selectedTraits)
+        newSp = Species{T}(sp.popsize, [newTrait])
+        push!(newSpecies, newSp)
+    end
+
+    Community(newSpecies, auxs(comm), comm.time)
+end
+
+
 # Remove species from a community
 
 """
