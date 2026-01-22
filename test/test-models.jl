@@ -7,8 +7,8 @@ using LinearAlgebra
 
     @testset "testing_lotkaVolterra_basic_functionality" begin
         # Define simple growth and interaction functions
-        growthFn = traits -> 1.0 .- traits.^2
-        kernelFn = (z_i, z_j) -> -exp(-((z_i - z_j) / 0.15)^2)
+        growthFn = traits -> 1.0 - sum(traits.^2)
+        kernelFn = (z_i, z_j) -> -exp(-sum((z_i .- z_j).^2) / 0.15^2)
 
         # Create a community
         comm = Community([1.0, 1.0, 1.0], [-0.2, 0.0, 0.3], Float64[])
@@ -73,7 +73,7 @@ using LinearAlgebra
 
     @testset "testing_lotkaVolterra_trait_dependent_growth" begin
         # Growth rate depends on trait value
-        growthFn = z -> 1.0 - z^2
+        growthFn = z -> 1.0 - sum(z.^2)
         kernelFn = (z_i, z_j) -> -0.5  # Weak competition
 
         comm = Community([1.0, 1.0], [0.0, 0.5], Float64[])
@@ -96,7 +96,7 @@ using LinearAlgebra
         # Competition depends on trait distance (niche differentiation)
         growthFn = z -> 1.0
         competitionWidth = 0.2
-        kernelFn = (z_i, z_j) -> -exp(-((z_i - z_j) / competitionWidth)^2)
+        kernelFn = (z_i, z_j) -> -exp(-sum((z_i .- z_j).^2) / competitionWidth^2)
 
         # Two species with different traits
         comm = Community([1.0, 1.0], [-0.3, 0.3], Float64[])
@@ -120,8 +120,8 @@ using LinearAlgebra
 
     @testset "testing_lotkaVolterra_integration_with_EcoEvoConfig" begin
         # Test full integration with EcoEvoConfig
-        growthFn = z -> 1.0 - z^2
-        kernelFn = (z_i, z_j) -> -exp(-((z_i - z_j) / 0.15)^2)
+        growthFn = z -> 1.0 - sum(z.^2)
+        kernelFn = (z_i, z_j) -> -exp(-sum((z_i .- z_j).^2) / 0.15^2)
 
         comm = Community([1.0, 1.0, 1.0], [-0.2, 0.0, 0.3], Float64[])
         ecoDynFactory = lotkaVolterra(growthFn, kernelFn)
@@ -148,8 +148,8 @@ using LinearAlgebra
 
     @testset "testing_lotkaVolterra_with_keyword_constructor" begin
         # Test using keyword constructor for EcoEvoConfig
-        growthFn = z -> 1.0 - z^2
-        kernelFn = (z_i, z_j) -> -exp(-((z_i - z_j) / 0.15)^2)
+        growthFn = z -> 1.0 - sum(z.^2)
+        kernelFn = (z_i, z_j) -> -exp(-sum((z_i .- z_j).^2) / 0.15^2)
 
         comm = Community([1.0, 1.0], [0.0, 0.5], Float64[])
         ecoDynFactory = lotkaVolterra(growthFn, kernelFn)
@@ -171,8 +171,8 @@ using LinearAlgebra
 
     @testset "testing_lotkaVolterra_different_numeric_types" begin
         # Test with Float32
-        growthFn = z -> Float32(1.0 - z^2)
-        kernelFn = (z_i, z_j) -> -Float32(exp(-((z_i - z_j) / 0.15)^2))
+        growthFn = z -> Float32(1.0 - sum(z.^2))
+        kernelFn = (z_i, z_j) -> -Float32(exp(-sum((z_i .- z_j).^2) / 0.15^2))
 
         comm = Community(Float32[1.0, 1.0], Float32[0.0, 0.5], Float32[])
         ecoDynFn = lotkaVolterra(growthFn, kernelFn)(comm)

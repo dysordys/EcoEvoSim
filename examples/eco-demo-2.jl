@@ -6,10 +6,10 @@
 using EcoEvoSim
 
 # Define growth rate as a function of trait
-growthFn = traits -> 1.0 .- traits.^2
+growthFn = traits -> 1.0 - sum(traits.^2)
 
 # Define competition based on trait distance with Gaussian kernel
-interactionFn = (z_i, z_j) -> exp(-((z_i - z_j) / 0.15)^2)
+interactionFn = (z_i, z_j) -> exp(-sum((z_i .- z_j).^2) / 0.15^2)
 
 # Create a community
 comm = Community([1.0, 1.0, 1.0], [-0.2, 0.0, 0.3], Float64[])

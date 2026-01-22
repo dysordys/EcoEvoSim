@@ -137,12 +137,12 @@ using DifferentialEquations
         @test_nowarn IntegrationParams(maxTime = 100.0, algorithm = DynamicSS())
 
         # EcoEvoConfig examples
-        growthFn(z) = 1.0 - z^2
-        interactionFn(z_i, z_j) = exp(-((z_i - z_j) / 0.15)^2)
+        growthFn(z) = 1.0 - sum(z.^2)
+        kernelFn(z_i, z_j) = -exp(-sum((z_i .- z_j).^2) / 0.15^2)
         mutationGen(comm, cfg) = generateMutant(comm, cfg, 0.01)
 
         config = EcoEvoConfig(
-            ecoDyn = lotkaVolterra(growthFn, interactionFn),
+            ecoDyn = lotkaVolterra(growthFn, kernelFn),
             mutationGenerator = mutationGen,
             integrationParams = IntegrationParams(maxTime = 50.0),
             invaderPopsize = 0.001,
@@ -154,11 +154,11 @@ using DifferentialEquations
 
     @testset "Eco-Evo Functions" begin
         # Set up configuration
-        growthFn(z) = 1.0 - z^2
-        interactionFn(z_i, z_j) = exp(-((z_i - z_j) / 0.15)^2)
+        growthFn(z) = 1.0 - sum(z.^2)
+        kernelFn(z_i, z_j) = -exp(-sum((z_i .- z_j).^2) / 0.15^2)
 
         config = EcoEvoConfig(
-            ecoDyn = lotkaVolterra(growthFn, interactionFn),
+            ecoDyn = lotkaVolterra(growthFn, kernelFn),
             mutationGenerator = (comm, cfg) -> generateMutant(comm, cfg, 0.01),
             integrationParams = IntegrationParams(maxTime = 10.0, abstol=1e-6, reltol=1e-4),
             invaderPopsize = 0.001,
@@ -212,13 +212,13 @@ using DifferentialEquations
 
     @testset "Models" begin
         # lotkaVolterra examples (from docstring)
-        growthFn(z) = 1.0 - z^2
-        interactionFn(z_i, z_j) = exp(-((z_i - z_j) / 0.15)^2)
+        growthFn(z) = 1.0 - sum(z.^2)
+        kernelFn(z_i, z_j) = -exp(-sum((z_i .- z_j).^2) / 0.15^2)
 
         community = Community([1.0, 1.0, 1.0], [-0.2, 0.0, 0.3], Float64[])
 
         config = EcoEvoConfig(
-            ecoDyn = lotkaVolterra(growthFn, interactionFn),
+            ecoDyn = lotkaVolterra(growthFn, kernelFn),
             mutationGenerator = (comm, cfg) -> generateMutant(comm, cfg, 0.01),
             integrationParams = IntegrationParams(maxTime = 10.0, abstol=1e-6, reltol=1e-4),
             invaderPopsize = 0.001,
@@ -235,11 +235,11 @@ result = ecoDyn(community, config)
         @test niceTickInterval(95000) == 20000  # Actual result is 20000, not 10000
 
         # plotEvo examples (just verify it doesn't error, don't display)
-        growthFn(z) = 1.0 - z^2
-        interactionFn(z_i, z_j) = exp(-((z_i - z_j) / 0.15)^2)
+        growthFn(z) = 1.0 - sum(z.^2)
+        kernelFn(z_i, z_j) = -exp(-sum((z_i .- z_j).^2) / 0.15^2)
 
         config = EcoEvoConfig(
-            ecoDyn = lotkaVolterra(growthFn, interactionFn),
+            ecoDyn = lotkaVolterra(growthFn, kernelFn),
             mutationGenerator = (comm, cfg) -> generateMutant(comm, cfg, 0.01),
             integrationParams = IntegrationParams(maxTime = 10.0, abstol=1e-6, reltol=1e-4),
             invaderPopsize = 0.001,
@@ -255,11 +255,11 @@ result = ecoDyn(community, config)
 
     @testset "History to Table" begin
         # historyToTable examples
-        growthFn(z) = 1.0 - z^2
-        interactionFn(z_i, z_j) = exp(-((z_i - z_j) / 0.15)^2)
+        growthFn(z) = 1.0 - sum(z.^2)
+        kernelFn(z_i, z_j) = -exp(-sum((z_i .- z_j).^2) / 0.15^2)
 
         config = EcoEvoConfig(
-            ecoDyn = lotkaVolterra(growthFn, interactionFn),
+            ecoDyn = lotkaVolterra(growthFn, kernelFn),
             mutationGenerator = (comm, cfg) -> generateMutant(comm, cfg, 0.01),
             integrationParams = IntegrationParams(maxTime = 10.0, abstol=1e-6, reltol=1e-4),
             invaderPopsize = 0.001,

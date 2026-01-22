@@ -2,10 +2,10 @@ using EcoEvoSim
 using Plots
 
 
-growthFn = z -> 1.0 - z^2
-kernelFn = (zi, zj) -> -exp(-((zi - zj) / 0.25)^2)
+growthFn = z -> 1.0 - sum(z.^2)
+kernelFn = (zi, zj) -> -exp(-sum((zi .- zj).^2) / 0.25^2)
 
-community = Community([Species(1.0, [0.3, -0.1])], PopulationSize{Float64}[], 0.0)
+community = Community([Species(1.0, [0.3, -0.3])], PopulationSize{Float64}[], 0.0)
 
 config = EcoEvoConfig(
     ecoDyn = lotkaVolterra(growthFn, kernelFn),

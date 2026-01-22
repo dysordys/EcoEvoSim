@@ -2,7 +2,7 @@
 
 
 """
-    lotkaVolterra(growthRateFn, interactionFn)
+    lotkaVolterra(growthFn, kernelFn)
 
 Factory function for creating a multispecies Lotka-Volterra competition model.
 
@@ -10,10 +10,10 @@ Returns a function that takes a `Community` and produces the ecological dynamics
 function (`ecoDyn`) for that community.
 
 # Arguments
-- `growthRateFn`: Function that takes a vector of trait values and returns
-  a vector of intrinsic growth rates. Signature: `Vector{T} -> Vector{T}`
-- `interactionFn`: Function that takes two trait values and returns the
-  competition coefficient. Signature: `(T, T) -> T`
+- `growthFn`: Function that takes a trait vector (for one species) and returns
+  a scalar intrinsic growth rate. Signature: `Vector{T} -> T`
+- `kernelFn`: Function that takes two trait vectors and returns the
+  interaction coefficient. Signature: `(Vector{T}, Vector{T}) -> T`
 
 # Returns
 A function with signature `Community -> Function` that takes a community and
@@ -26,25 +26,25 @@ dN_i/dt = N_i * (b_i - sum_j a_ij * N_j)
 ```
 where:
 - `N_i` is the population size of species i
-- `b_i` is the intrinsic growth rate (from `growthRateFn`)
-- `a_ij` is the competition coefficient between species i and j (from `interactionFn`)
+- `b_i` is the intrinsic growth rate (from `growthFn`)
+- `a_ij` is the interaction coefficient between species i and j (from `kernelFn`)
 
 # Example
 ```julia
 using EcoEvoSim
 
 # Define growth rate as a function of trait
-growthFn = traits -> 1.0 .- traits.^2
+growthFn = traits -> 1.0 - sum(traits.^2)
 
 # Define competition based on trait distance with Gaussian kernel
-interactionFn = (z_i, z_j) -> exp(-((z_i - z_j) / 0.15)^2)
+kernelFn = (z_i, z_j) -> -exp(-sum((z_i .- z_j).^2) / 0.15^2)
 
 # Create a community
 community = Community([1.0, 1.0, 1.0], [-0.2, 0.0, 0.3], Float64[])
 
 # Create configuration with desired settings
 config = EcoEvoConfig(
-    ecoDyn = lotkaVolterra(growthFn, interactionFn),
+    ecoDyn = lotkaVolterra(growthFn, kernelFn),
     mutationGenerator = (x) -> x .+ 0.01,
     integrationParams = IntegrationParams(maxTime = 50.0),
     invaderPopsize = 0.001,
@@ -57,28 +57,28 @@ finalCommunity = ecoDyn(community, config)
 """
 
 
-function lotkaVolterra(growthRateFn, interactionFn)
+function lotkaVolterra(growthFn, kernelFn)
     # Return a function that creates the dynamics function for a given community
     function createDynamics(community::Community{T, AuxClasses}) where {T<:Real, AuxClasses}
         # Extract traits from the community
         nSpecies = numSpecies(community)
-        spTraits = [traits(community, i)[1] for i in 1:nSpecies]
+        spTraits = [traits(community, i) for i in 1:nSpecies]
 
         # Compute intrinsic growth rates using the provided function
-        b = [growthRateFn(spTraits[i]) for i in 1:nSpecies]
+        b = [growthFn(spTraits[i]) for i in 1:nSpecies]
 
         # Precompute interaction coefficient matrix using the provided function
-        A = zeros(T, nSpecies, nSpecies)
+        a = zeros(T, nSpecies, nSpecies)
         for i in 1:nSpecies
             for j in 1:nSpecies
-                A[i, j] = interactionFn(spTraits[i], spTraits[j])
+                a[i, j] = kernelFn(spTraits[i], spTraits[j])
             end
         end
 
         # Return the dynamics function with proper signature for ODEProblem
-        # Note: We can safely close over A and b because this function is recreated
+        # Note: We can safely close over a and b because this function is recreated
         # for each new community in ecoDyn (which calls config.ecoDyn(community))
-        return (u, p, t) -> u .* (b .+ (A * u))
+        return (u, p, t) -> u .* (b .+ (a * u))
     end
 
     return createDynamics

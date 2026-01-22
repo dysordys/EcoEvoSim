@@ -5,8 +5,8 @@ using CSV
 
 
 # Create a simple evolutionary simulation
-growthFn = z -> z^2 / (3 + z^2) #1.0 - z^2
-kernelFn = (zi, zj) -> -(tanh((zi - zj) / 0.3) + 1) / 2 #-exp(-((zi - zj) / 0.25)^2)
+growthFn = z -> sum(z.^2) / (3 + sum(z.^2)) #1.0 - sum(z.^2)
+kernelFn = (zi, zj) -> -(tanh(sum(zi .- zj) / 0.3) + 1) / 2 #-exp(-sum((zi .- zj).^2) / 0.25^2)
 
 community = Community([1.0], [0.3], Float64[])
 
