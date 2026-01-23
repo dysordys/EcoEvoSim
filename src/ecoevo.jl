@@ -387,7 +387,6 @@ function evolve!(
 
     # Perform nMutEvents evolutionary steps
     if showProgress
-        println("Running evolutionary simulation...")
         print_interval = max(1, div(nMutEvents, 100))  # Update every ~1%
     end
 
@@ -414,7 +413,7 @@ end
 """
     evolve!(community::Community{T, AuxClasses}, config::EcoEvoConfig{T}, nMutEvents::Int; showProgress::Bool=true) where {T, AuxClasses}
 
-Convenience method that creates an EvoHistory from the initial community
+Convenience method that creates an EvoHistory from a single initial community
 and runs the evolutionary simulation.
 
 Returns the EvoHistory containing the initial community plus all evolved communities.

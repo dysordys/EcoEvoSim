@@ -277,7 +277,9 @@ function plotEvoTwoTrait(
         size = size,
         legend = legend ? :right : false,
         colorbar = legend,
-        colorbar_title = legend ? "Population size" : "",
+        colorbar_title = legend ? "\n\nPopulation size" : "",
+        colorbar_title_location = :right,
+        colorbar_titleoffsetx = 0,
         label = "",
         camera = camera
     )
