@@ -1,3 +1,26 @@
+# Get the length of an EvoHistory
+
+"""
+    length(h::EvoHistory)
+
+Return the number of communities stored in the evolutionary history.
+
+# Arguments
+- `h::EvoHistory`: The evolutionary history object
+
+# Returns
+Number of time points (communities) in the history
+
+# Example
+```julia
+# Assuming you have an EvoHistory object called 'history'
+n = length(history)  # Number of snapshots in history
+```
+"""
+Base.length(h::EvoHistory) = length(h.history)
+
+
+
 # Add a species to an existing community
 
 """

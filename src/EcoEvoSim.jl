@@ -25,7 +25,7 @@ export PopulationSize, Phenotype, Species, Community, EvoHistory,
        changePopsizes, changeTraits, orderByTrait, selectTraitDim,
        emptyCommunity, emptyEvoHistory, IntegrationParams, EcoEvoConfig,
        generateMutant, generateMutantWeighted, ecoDyn, singleEvoStep,
-       evolve!, unpackCommunity, packCommunity, lotkaVolterra, plotEvo,
+       evolve!, evolve, unpackCommunity, packCommunity, lotkaVolterra, plotEvo,
        plotEvoTwoTrait, niceTickInterval, historyToTable
 
 

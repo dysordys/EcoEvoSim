@@ -406,7 +406,7 @@ function evolve!(
     end
     showProgress && println()  # New line after completion
 
-    return nothing
+    return history
 end
 
 
@@ -432,4 +432,104 @@ function evolve!(
 
     # Return the history for user access
     return history
+end
+
+
+"""
+    evolve(history::EvoHistory{T, AuxClasses}, config::EcoEvoConfig{T}, nMutEvents::Int; showProgress::Bool=true) where {T, AuxClasses}
+
+Non-mutating version of `evolve!`. Creates a deep copy of the history and runs
+the evolutionary simulation on the copy, leaving the original unchanged.
+
+Returns a new EvoHistory with the additional evolved communities.
+
+# Example
+```jldoctest
+julia> using EcoEvoSim
+
+julia> comm = Community([1.0], [0.3], Float64[]);
+
+julia> growthFn = z -> sum(z.^2) / (3 + sum(z.^2));
+
+julia> kernelFn = (zi, zj) -> -(tanh(sum(zi .- zj) / 0.3) + 1) / 2;
+
+julia> config = EcoEvoConfig(
+           ecoDyn = lotkaVolterra(growthFn, kernelFn),
+           mutationGenerator = (c, cfg) -> generateMutant(c, cfg, 0.002^2),
+           integrationParams = IntegrationParams(maxTime = 1.0e8),
+           invaderPopsize = 0.001,
+           extThreshold = 0.003
+       );
+
+julia> history1 = evolve!(comm, config, 10);
+
+julia> history2 = evolve(history1, config, 5);
+
+julia> length(history1)  # Original unchanged
+11
+
+julia> length(history2)  # New history extended
+16
+```
+"""
+function evolve(
+        history::EvoHistory{T, AuxClasses},
+        config::EcoEvoConfig{T},
+        nMutEvents::Int;
+        showProgress::Bool = true
+    ) where {T<:Real, AuxClasses}
+    # Create a deep copy to avoid mutating the original
+    history_copy = EvoHistory{T, AuxClasses}(deepcopy(history.history))
+
+    # Run evolution on the copy
+    evolve!(history_copy, config, nMutEvents; showProgress=showProgress)
+
+    return history_copy
+end
+
+
+"""
+    evolve(community::Community{T, AuxClasses}, config::EcoEvoConfig{T}, nMutEvents::Int; showProgress::Bool=true) where {T, AuxClasses}
+
+Non-mutating version of `evolve!` that starts from a Community.
+
+Creates an EvoHistory from the initial community and runs the evolutionary simulation.
+This is functionally equivalent to `evolve!` for a Community since a new history is
+always created, but provided for API consistency.
+
+Returns the EvoHistory containing the initial community plus all evolved communities.
+
+# Example
+```jldoctest
+julia> using EcoEvoSim
+
+julia> comm = Community([1.0], [0.3], Float64[]);
+
+julia> growthFn = z -> sum(z.^2) / (3 + sum(z.^2));
+
+julia> kernelFn = (zi, zj) -> -(tanh(sum(zi .- zj) / 0.3) + 1) / 2;
+
+julia> config = EcoEvoConfig(
+           ecoDyn = lotkaVolterra(growthFn, kernelFn),
+           mutationGenerator = (c, cfg) -> generateMutant(c, cfg, 0.002^2),
+           integrationParams = IntegrationParams(maxTime = 1.0e8),
+           invaderPopsize = 0.001,
+           extThreshold = 0.003
+       );
+
+julia> history = evolve(comm, config, 10);
+
+julia> length(history)
+11
+```
+"""
+function evolve(
+        community::Community{T, AuxClasses},
+        config::EcoEvoConfig{T},
+        nMutEvents::Int;
+        showProgress::Bool = true
+    ) where {T<:Real, AuxClasses}
+    # For Community, this is equivalent to evolve! since we always create new history
+    # But we provide it for consistency
+    return evolve!(community, config, nMutEvents; showProgress=showProgress)
 end

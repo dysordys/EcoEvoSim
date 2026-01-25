@@ -758,4 +758,147 @@ numTests = 50
         @test numSpecies(history1.history[end]) == numSpecies(history2.history[end])
     end
 
+
+    @testset "testing_evolve_non_mutating_with_history" begin
+        # Test that evolve (without !) doesn't modify original history
+        nSpecies = 2
+        species = [Species(5.0, [i/10.0]) for i in 1:nSpecies]
+        initialComm = Community(species, PopulationSize{Float64}[], 0.0)
+
+        ecoDynFactory = (community) -> (u, p, t) -> -0.01 * u
+        mutGen = (c, cfg) -> generateMutant(c, cfg, 0.01)
+        params = IntegrationParams(maxTime=1.0, abstol=1e-8, reltol=1e-6)
+        config = EcoEvoConfig(
+            ecoDyn=ecoDynFactory,
+            mutationGenerator=mutGen,
+            integrationParams=params,
+            invaderPopsize=1.0,
+            extThreshold=1e-8
+        )
+
+        # Create initial history
+        history1 = evolve!(initialComm, config, 3; showProgress=false)
+        originalLength = length(history1.history)
+
+        # Use non-mutating evolve
+        history2 = evolve(history1, config, 2; showProgress=false)
+
+        # Check that original history is unchanged
+        @test length(history1.history) == originalLength
+
+        # Check that new history is extended
+        @test length(history2.history) == originalLength + 2
+
+        # Check that they share initial communities (values should match)
+        for i in 1:originalLength
+            @test history1.history[i].time == history2.history[i].time
+            @test numSpecies(history1.history[i]) == numSpecies(history2.history[i])
+        end
+
+        # Check that they are different objects
+        @test history1 !== history2
+        @test history1.history !== history2.history
+    end
+
+
+    @testset "testing_evolve_non_mutating_with_community" begin
+        # Test evolve (without !) starting from Community
+        nSpecies = 2
+        species = [Species(8.0, [i/10.0]) for i in 1:nSpecies]
+        initialComm = Community(species, PopulationSize{Float64}[], 0.0)
+
+        ecoDynFactory = (community) -> (u, p, t) -> -0.001 * u
+        mutGen = (c, cfg) -> generateMutant(c, cfg, 0.01)
+        params = IntegrationParams(maxTime=0.5, abstol=1e-8, reltol=1e-6)
+        config = EcoEvoConfig(
+            ecoDyn=ecoDynFactory,
+            mutationGenerator=mutGen,
+            integrationParams=params,
+            invaderPopsize=1.5,
+            extThreshold=1e-8
+        )
+
+        nMutEvents = 3
+
+        # Use non-mutating evolve
+        history = evolve(initialComm, config, nMutEvents; showProgress=false)
+
+        # Check that history is returned with correct structure
+        @test history isa EvoHistory{Float64, 0}
+        @test length(history.history) == 1 + nMutEvents
+
+        # Check that evolution occurred
+        @test history.history[end].time > history.history[1].time
+        @test numSpecies(history.history[end]) >= nSpecies
+    end
+
+
+    @testset "testing_evolve_vs_evolve!_consistency" begin
+        # Test that evolve and evolve! produce equivalent results
+        nSpecies = 2
+        species = [Species(6.0, [i/8.0]) for i in 1:nSpecies]
+        comm1 = Community(species, PopulationSize{Float64}[], 0.0)
+        comm2 = Community(species, PopulationSize{Float64}[], 0.0)
+
+        ecoDynFactory = (community) -> (u, p, t) -> -0.02 * u
+        mutGen = (c, cfg) -> generateMutant(c, cfg, 0.015)
+        params = IntegrationParams(maxTime=2.0, abstol=1e-8, reltol=1e-6)
+        config = EcoEvoConfig(
+            ecoDyn=ecoDynFactory,
+            mutationGenerator=mutGen,
+            integrationParams=params,
+            invaderPopsize=1.2,
+            extThreshold=1e-8
+        )
+
+        # Use both methods
+        history1 = evolve(comm1, config, 4; showProgress=false)
+        history2 = evolve!(comm2, config, 4; showProgress=false)
+
+        # Should produce histories with same structure
+        @test length(history1.history) == length(history2.history)
+        @test numSpecies(history1.history[end]) == numSpecies(history2.history[end])
+    end
+
+
+    @testset "testing_evolve_multiple_calls_independence" begin
+        # Test that multiple calls to evolve don't interfere with each other
+        nSpecies = 2
+        species = [Species(4.0, [i/6.0]) for i in 1:nSpecies]
+        initialComm = Community(species, PopulationSize{Float64}[], 0.0)
+
+        ecoDynFactory = (community) -> (u, p, t) -> -0.005 * u
+        mutGen = (c, cfg) -> generateMutant(c, cfg, 0.02)
+        params = IntegrationParams(maxTime=1.5, abstol=1e-8, reltol=1e-6)
+        config = EcoEvoConfig(
+            ecoDyn=ecoDynFactory,
+            mutationGenerator=mutGen,
+            integrationParams=params,
+            invaderPopsize=0.8,
+            extThreshold=1e-8
+        )
+
+        # Create base history
+        history0 = evolve(initialComm, config, 2; showProgress=false)
+        originalLength = length(history0.history)
+
+        # Call evolve multiple times on same base
+        historyA = evolve(history0, config, 1; showProgress=false)
+        historyB = evolve(history0, config, 2; showProgress=false)
+        historyC = evolve(history0, config, 3; showProgress=false)
+
+        # Original should be unchanged
+        @test length(history0.history) == originalLength
+
+        # Each should have different lengths
+        @test length(historyA.history) == originalLength + 1
+        @test length(historyB.history) == originalLength + 2
+        @test length(historyC.history) == originalLength + 3
+
+        # All should be independent objects
+        @test historyA !== historyB
+        @test historyB !== historyC
+        @test historyA !== historyC
+    end
+
 end
