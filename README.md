@@ -54,8 +54,8 @@ growthFn = z -> 1 - sum(z.^2) / 0.5^2
 # Gaussian interaction kernel with width 0.15:
 kernelFn = (zi, zj) -> -exp(-sum((zi .- zj).^2) / (2 * 0.15^2))
 
-# Initialize a community with a single species of pop. size 1 and trait value -0.3:
-community = Community([1.0], [-0.3], Float64[])
+# Initialize a community with a single species with density 1 and trait value -0.3:
+initCommunity = Community([1.0], [-0.3], Float64[])
 
 # Configure the simulation
 config = EcoEvoConfig(
@@ -71,13 +71,13 @@ config = EcoEvoConfig(
     extThreshold = 0.003
 )
 
-# Run the simulation for 1000 mutation events
-evoHistory = evolve!(community, config, 1000)
+# Run the simulation for 1000 mutation events:
+evoHistory = evolve!(initCommunity, config, 1000)
 
 # Run for another 500 events - this is as easy as applying evolve!() to evoHistory:
 evoHistory = evolve!(evoHistory, config, 500)
 
-# Visualize the results
+# Visualize the results:
 plotEvo(evoHistory)
 ```
 
