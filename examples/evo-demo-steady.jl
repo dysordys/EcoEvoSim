@@ -2,11 +2,11 @@ using EcoEvoSim
 using Plots
 using DifferentialEquations
 
-# Create a simple evolutionary simulation
-growthFn = (z) -> sum(z.^2) / (3 + sum(z.^2))
-kernelFn = (zi, zj) -> -(tanh(sum(zi .- zj) / 0.3) + 1) / 2
 
-community = Community([1.0], [0.3], Float64[])
+
+# Create a simple evolutionary simulation
+growthFn = (z) -> (tanh(sum(z .- 0.5) / 0.2) + 1) / 2 - 0.006692851
+kernelFn = (zi, zj) -> -(tanh(sum(zi .- zj) / 0.15) + 1) / 2
 
 config = EcoEvoConfig(
     ecoDyn = lotkaVolterra(growthFn, kernelFn),
@@ -17,11 +17,13 @@ config = EcoEvoConfig(
         abstol = 1e-14,  # Absolute tolerance for steady state
         reltol = 1e-8    # Relative tolerance for steady state
     ),
-    invaderPopsize = 1e-3,
-    extThreshold = 3e-3
+    invaderPopsize = 0.001,
+    extThreshold = 0.003
 )
 
-history = evolve!(community, config, 8000)
+lineage = Community([1.0], [0.3], Float64[])
 
-p = plotEvo(history)
+lineage = evolve!(lineage, config, 1500)
+
+p = plotEvo(lineage)
 # savefig(p, "test_plotEvo_steady.png")

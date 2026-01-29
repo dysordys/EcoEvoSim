@@ -212,27 +212,39 @@ function ecoDyn(
 
     # Check if we're using a steady-state solver
     alg = config.integrationParams.algorithm
-    if alg isa DynamicSS || alg isa SSRootfind
-        # Use SteadyStateProblem for steady-state solvers
+    if alg isa DynamicSS
+        # For steady-state integration, use ODEProblem with a callback that terminates
+        # when the solution reaches steady state (i.e., when derivatives are near zero)
+        tspan = (community.time, community.time + config.integrationParams.maxTime)
+        prob = ODEProblem(ode_fn, u0, tspan)
+
+        # Get the inner ODE solver and tolerances from the algorithm
+        # If no inner algorithm is specified, use a robust default
+        inner_alg = alg.alg === nothing ? Rodas5() : alg.alg
+
+        # Get tolerances for steady-state detection
+        abstol = get(config.integrationParams.solver_options, :abstol, 1e-8)
+        reltol = get(config.integrationParams.solver_options, :reltol, 1e-6)
+
+        # Use the ODE solver with steady-state termination callback
+        sol = solve(prob, inner_alg; config.integrationParams.solver_options...,
+                    callback = TerminateSteadyState(abstol, reltol))
+        u_final = sol.u[end]
+        t_final = sol.t[end]
+    elseif alg isa SSRootfind
+        # SSRootfind uses initial conditions as a starting guess for rootfinding
         prob = SteadyStateProblem(ode_fn, u0)
+        sol = solve(prob, config.integrationParams.algorithm;
+                    config.integrationParams.solver_options...)
+        u_final = sol.u
+        # For rootfinding, time is meaningless - keep original time
+        t_final = community.time
     else
         # Use ODEProblem for time-integration solvers
         tspan = (community.time, community.time + config.integrationParams.maxTime)
         prob = ODEProblem(ode_fn, u0, tspan)
-    end
-
-    # Solve with specified algorithm and solver options
-    sol = solve(prob, config.integrationParams.algorithm;
-                config.integrationParams.solver_options...)
-
-    # Extract final state and pack back into Community
-    # For steady-state problems, sol.u is the solution vector directly
-    # For ODE problems, sol.u is an array of states over time
-    if alg isa DynamicSS || alg isa SSRootfind
-        u_final = sol.u
-        # Fixed-point integration is equivalent to integrating to t = Inf
-        t_final = T(Inf)
-    else
+        sol = solve(prob, config.integrationParams.algorithm;
+                    config.integrationParams.solver_options...)
         u_final = sol.u[end]
         t_final = sol.t[end]
     end

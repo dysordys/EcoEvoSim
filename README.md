@@ -54,9 +54,6 @@ growthFn = z -> 1 - sum(z.^2) / 0.5^2
 # Gaussian interaction kernel with width 0.15:
 kernelFn = (zi, zj) -> -exp(-sum((zi .- zj).^2) / (2 * 0.15^2))
 
-# Initialize a community with a single species with density 1 and trait value -0.3:
-initCommunity = Community([1.0], [-0.3], Float64[])
-
 # Configure the simulation
 config = EcoEvoConfig(
     # Use Lotka-Volterra dynamics, with the specified functions growthFn and kernelFn:
@@ -70,6 +67,9 @@ config = EcoEvoConfig(
     # Species with pop. size below 0.003 after eco. simulation are removed:
     extThreshold = 0.003
 )
+
+# Initialize a community with a single species with density 1 and trait value -0.3:
+initCommunity = Community([1.0], [-0.3], Float64[])
 
 # Run the simulation for 1000 mutation events:
 evoHistory = evolve!(initCommunity, config, 1000)
