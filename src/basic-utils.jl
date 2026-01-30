@@ -419,7 +419,24 @@ end
 
 
 # Find species below extinction threshold
+"""
+    speciesBelowThreshold(comm::Community, extThreshold::Real)
 
+Find all species with total population size below the specified threshold.
+
+# Arguments
+- `comm::Community`: The community
+- `extThreshold::Real`: Extinction threshold (non-negative)
+
+# Returns
+Vector of indices for species below the threshold
+
+# Example
+```julia
+comm = Community([0.001, 2.0, 0.005], [0.1, 0.2, 0.3], Float64[])
+extinct_indices = speciesBelowThreshold(comm, 0.01)  # Returns [1, 3]
+```
+"""
 function speciesBelowThreshold(comm::Community, extThreshold::Real)
     extThreshold >= 0.0 || throw(ArgumentError(
         "Extinction threshold must be non-negative"

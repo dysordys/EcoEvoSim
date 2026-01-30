@@ -278,11 +278,15 @@ function generateMutant(
     parentIdx = selectionFunc(community)
     parentTrait = traits(community, parentIdx)
 
+    # Get number of stage classes from parent species
+    nStages = numStages(community)
+
     # Generate mutant trait: parent + multivariate normal
     mutantTrait = parentTrait .+ rand(MvNormal(covMat))
 
-    # Create mutant species with invader population size
-    mutantSpecies = Species(config.invaderPopsize, mutantTrait)
+    # Create mutant species with invader population size distributed across stage classes
+    mutantPopsizeVec = fill(config.invaderPopsize / nStages, nStages)
+    mutantSpecies = Species(mutantPopsizeVec, mutantTrait)
 
     # Create new community with mutant appended
     newSpeciesList = vcat(speciesList(community), mutantSpecies)

@@ -189,6 +189,29 @@ end
 
 
 """
+    numStages(comm::Community)
+
+Return the number of stage classes in the community.
+
+All species must have the same number of stage classes. Throws an `ArgumentError`
+if the community is empty or if stage class counts differ across species.
+
+# Example
+```julia
+comm = Community([1.0 2.0; 3.0 4.0], [0.1, 0.2], Float64[])
+nstages = numStages(comm)  # Returns 2
+```
+"""
+function numStages(comm::Community)
+    numSp = numSpecies(comm)
+    numSp > 0 ||
+        throw(ArgumentError("Cannot determine number of stages from empty community"))
+    sp_pops = popsizes(comm)
+    length(sp_pops[1])
+end
+
+
+"""
     traits(comm::Community)
     traits(comm::Community, i::Integer)
     traits(comm::Community, indices)
@@ -389,23 +412,3 @@ function weightedRandomSpecies(comm::Community)
     # Fallback (should never reach here due to numerical precision)
     return numSp
 end
-
-
-"""
-    speciesBelowThreshold(comm::Community, extThreshold::Real)
-
-Find all species with total population size below the specified threshold.
-
-# Arguments
-- `comm::Community`: The community
-- `extThreshold::Real`: Extinction threshold (non-negative)
-
-# Returns
-Vector of indices for species below the threshold
-
-# Example
-```julia
-comm = Community([0.001, 2.0, 0.005], [0.1, 0.2, 0.3], Float64[])
-extinct_indices = speciesBelowThreshold(comm, 0.01)  # Returns [1, 3]
-```
-"""

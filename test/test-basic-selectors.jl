@@ -340,4 +340,32 @@ numTests = 50
         end
     end
 
+    @testset "testing_numStages" begin
+        for _ in 1:numTests
+            T = Float64
+            numSpecies = rand(1:5)
+            numStages_expected = rand(1:4)
+            auxClasses = rand(0:3)
+
+            # Create species with the same number of stages
+            sps = Species{T}[]
+            for _ in 1:numSpecies
+                ps = PopulationSize(rand(T, numStages_expected))
+                ph = Phenotype(rand(T, rand(1:3)))
+                push!(sps, Species(ps, ph))
+            end
+            aux = [PopulationSize(rand(T)) for _ in 1:auxClasses]
+            comm = Community(sps, aux)
+
+            # Test that numStages returns the correct value
+            @test numStages(comm) == numStages_expected
+        end
+    end
+
+    @testset "testing_numStages_with_empty_community" begin
+        T = Float64
+        comm = Community(Species{T}[], PopulationSize{T}[])
+        @test_throws ArgumentError numStages(comm)
+    end
+
 end
