@@ -199,6 +199,41 @@ numTests = 50
         @test_throws ArgumentError Community(rand(Float64, 3), rand(Float64, 4), Float64[])
     end
 
+    @testset "testing_Community_constructor_from_values_without_aux" begin
+        for _ in 1:numTests
+            T = Float64
+            numSpecies = rand(1:5)
+            popvals = rand(T, numSpecies)
+            traitvals = rand(T, numSpecies) # must match length of popvals
+
+            comm = Community(popvals, traitvals)
+            @test length(comm.species) == numSpecies
+            @test length(comm.aux) == 0
+            for (i, sp) in enumerate(comm.species)
+                @test length(sp.popsize) == 1
+                @test length(sp.trait) == 1
+                @test sp.popsize[1].popsize == [popvals[i]]
+                @test sp.trait[1].trait == [traitvals[i]]
+            end
+        end
+
+        # Verify equivalence with the version that explicitly provides empty aux
+        numSpecies = 3
+        popvals = [0.5, 1.0, 0.2]
+        traitvals = [-0.1, 0.5, 0.3]
+        comm_no_aux = Community(popvals, traitvals)
+        comm_with_empty_aux = Community(popvals, traitvals, Float64[])
+        @test length(comm_no_aux.species) == length(comm_with_empty_aux.species)
+        @test length(comm_no_aux.aux) == length(comm_with_empty_aux.aux) == 0
+        for i in 1:numSpecies
+            @test comm_no_aux.species[i].popsize[1].popsize == comm_with_empty_aux.species[i].popsize[1].popsize
+            @test comm_no_aux.species[i].trait[1].trait == comm_with_empty_aux.species[i].trait[1].trait
+        end
+
+        # Invalid: pop and trait must have same length
+        @test_throws ArgumentError Community(rand(Float64, 3), rand(Float64, 4))
+    end
+
     @testset "testing_Community_constructor_from_popMat_and_traitVec" begin
         for _ in 1:numTests
             T = Float64

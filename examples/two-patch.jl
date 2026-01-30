@@ -1,15 +1,10 @@
 using EcoEvoSim
 using Plots
 using DifferentialEquations
-using DataFrames
-using CSV
-using Random
 using Distributions
-using StatsBase
-using LinearAlgebra
 
 
-function patchGrowth(community, d::Float64 = 1.2)
+function patchGrowth(community, d)
     # spTraits is a vector of scalar trait values (one per species)
     # Returns a matrix with species in rows and patches in columns
     spTraits = traits(community)
@@ -23,17 +18,17 @@ function patchGrowth(community, d::Float64 = 1.2)
 end
 
 
-function densDep(community, alpha::Float64 = 1.0)
-    densityMatrix = popsizesToMatrix(community)
+function densDep(densityMatrix, alpha)
     return alpha .* dropdims(sum(densityMatrix; dims = 1), dims = 1)
 end
 
 
 function twopatch(
-        community::Community{T, AuxClasses}, mu::Float64 = 0.1, alpha::Float64 = 1.0
+        community::Community{T, AuxClasses};
+        d::Float64 = 1.2, mu::Float64 = 0.1, alpha::Float64 = 1.0
     ) where {T<:Real, AuxClasses}
     nSpecies = numSpecies(community)
-    growth = patchGrowth(community)  # species x patches
+    growth = patchGrowth(community, d)  # species x patches
     function odeFn(u::Vector{T}, p, t) where {T}
         # Reconstruct state into density matrix (species x patches)
         densityMatrix = zeros(T, nSpecies, 2)
@@ -44,7 +39,7 @@ function twopatch(
             densityMatrix[i, 2] = u[idx2]
         end
         # Compute density dependence per patch based on current densities
-        dens = alpha .* dropdims(sum(densityMatrix; dims = 1), dims = 1)
+        dens = densDep(densityMatrix, alpha)
         # Build dynamical matrix with current densities
         nEqs = nSpecies * 2
         M = zeros(T, nEqs, nEqs)
@@ -65,8 +60,8 @@ end
 
 
 config = EcoEvoConfig(
-    ecoDyn = twopatch,
-    mutationGenerator = (comm, cfg) -> generateMutant(comm, cfg, 0.002^2),
+    ecoDyn = comm -> twopatch(comm; d = 1.0, mu = 0.1, alpha = 1.0),
+    mutationGenerator = (comm, cfg) -> generateMutant(comm, cfg, 0.003^2),
     integrationParams = IntegrationParams(
         maxTime = Inf,
         algorithm = DynamicSS(),
@@ -77,8 +72,9 @@ config = EcoEvoConfig(
     extThreshold = 0.003
 )
 
+
 lineage = Community([1.0 1.0;], [-0.2])
 lineage = ecoDyn(lineage, config)
-@time lineage = evolve!(lineage, config, 2000);
+@time lineage = evolve!(lineage, config, 1000);
 
 p = plotEvo(lineage)

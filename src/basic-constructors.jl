@@ -110,6 +110,21 @@ end
 
 function Community(
         popVals::AbstractVector{T},
+        traitVals::AbstractVector{T}
+    ) where {T<:Real}
+    length(popVals) == length(traitVals) ||
+        throw(ArgumentError("`popVals` and `traitVals` must have the same length"))
+    # Create vector of species where each species has one stage class and one trait value
+    species = [Species{T}(
+        [PopulationSize{T}([popVals[i]])],
+        [Phenotype{T}([traitVals[i]])]
+    ) for i in eachindex(popVals)]
+    Community{T, 0}(species, PopulationSize{T}[], zero(T))
+end
+
+
+function Community(
+        popVals::AbstractVector{T},
         traitVals::AbstractVector{T},
         auxVals::AbstractVector{T}
     ) where {T<:Real}
