@@ -18,7 +18,10 @@ numTests = 50
                 ph = Phenotype(rand(T, rand(1:3)))
                 push!(sps, Species(ps, ph))
             end
-            aux = [PopulationSize(rand(T)) for _ in 1:auxClasses]
+            aux = Vector{PopulationSize{T}}(undef, auxClasses)
+            for i in 1:auxClasses
+                aux[i] = PopulationSize(rand(T))
+            end
             comm = Community(sps, aux)
             for i in 1:numSpecies
                 @test speciesList(comm, i) === sps[i]
@@ -53,7 +56,10 @@ numTests = 50
                 ph = Phenotype(rand(T, rand(1:3)))
                 push!(sps, Species(ps, ph))
             end
-            aux = [PopulationSize(rand(T)) for _ in 1:auxClasses]
+            aux = Vector{PopulationSize{T}}(undef, auxClasses)
+            for i in 1:auxClasses
+                aux[i] = PopulationSize(rand(T))
+            end
             comm = Community(sps, aux)
 
             # Test with empty vector
@@ -131,6 +137,39 @@ numTests = 50
                 @test result == [sps[1].popsize[1].popsize, sps[2].popsize[1].popsize]
             end
         end
+    end
+
+
+    @testset "testing_popsizesToMatrix" begin
+        for _ in 1:numTests
+            T = Float64
+            auxClasses = rand(0:3)
+            numSpecies = rand(1:5)
+            nstage = rand(1:4)
+            sps = Species{T}[]
+            for _ in 1:numSpecies
+                ps = PopulationSize(rand(T, nstage))
+                ph = Phenotype(rand(T, rand(1:3)))
+                push!(sps, Species(ps, ph))
+            end
+            aux = [PopulationSize(rand(T)) for _ in 1:auxClasses]
+            comm = Community(sps, aux)
+
+            M = popsizesToMatrix(comm)
+            @test size(M) == (numSpecies, nstage)
+            for i in 1:numSpecies, j in 1:nstage
+                @test M[i, j] == sps[i].popsize[1].popsize[j]
+            end
+        end
+
+        # Test that differing stage-class lengths throw an error
+        T = Float64
+        ps1 = PopulationSize(rand(T, 1))
+        ps2 = PopulationSize(rand(T, 2))
+        sp1 = Species(ps1, Phenotype(rand(T,1)))
+        sp2 = Species(ps2, Phenotype(rand(T,1)))
+        comm_mismatch = Community([sp1, sp2], PopulationSize{T}[])
+        @test_throws ArgumentError popsizesToMatrix(comm_mismatch)
     end
 
 

@@ -135,6 +135,37 @@ function popsizes(comm::Community, indices)
 end
 
 
+"""
+    popsizesToMatrix(comm::Community)
+
+Return population sizes as a matrix with species in rows and stage classes in columns.
+
+All species must have the same number of stage classes. Throws an `ArgumentError`
+if the stage class lengths differ across species.
+"""
+function popsizesToMatrix(comm::Community)
+    sp_pops = popsizes(comm)
+    numSp = length(sp_pops)
+    if numSp == 0
+        return Array{Float64,2}(undef, 0, 0)
+    end
+
+    nstage = length(sp_pops[1])
+    for (i, v) in enumerate(sp_pops)
+        length(v) == nstage || throw(ArgumentError(
+            "Species $i has $(length(v)) stage classes, expected $nstage"
+        ))
+    end
+
+    T = eltype(sp_pops[1])
+    M = Matrix{T}(undef, numSp, nstage)
+    for i in 1:numSp
+        M[i, :] = sp_pops[i]
+    end
+    return M
+end
+
+
 
 # Functions for extracting species' traits from a community
 

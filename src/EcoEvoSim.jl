@@ -20,9 +20,9 @@ include("visualize.jl")
 
 export PopulationSize, Phenotype, Species, Community, EvoHistory,
        speciesList, popsizes, traits, auxs, numSpecies, speciesIndices,
-       randomSpecies, weightedRandomSpecies, speciesBelowThreshold,
-       removeExtinct, traitSpaceDim, addSpecies, removeSpecies,
-       changePopsizes, changeTraits, orderByTrait, selectTraitDim,
+       popsizesToMatrix, randomSpecies, weightedRandomSpecies,
+       speciesBelowThreshold, removeExtinct, traitSpaceDim, addSpecies,
+       removeSpecies, changePopsizes, changeTraits, orderByTrait, selectTraitDim,
        emptyCommunity, emptyEvoHistory, IntegrationParams, EcoEvoConfig,
        generateMutant, generateMutantWeighted, ecoDyn, singleEvoStep,
        evolve!, evolve, unpackCommunity, packCommunity, lotkaVolterra, plotEvo,

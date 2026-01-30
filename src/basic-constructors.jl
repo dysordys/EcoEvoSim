@@ -81,6 +81,34 @@ end
 
 
 function Community(
+        species::Vector{Species{T}},
+        aux::AbstractVector,
+        time::T = zero(T)
+    ) where {T<:Real}
+    # Convert an untyped/heterogeneous aux vector to the expected
+    # Vector{PopulationSize{T}}. This handles empty vectors produced by
+    # comprehensions (which may have element type `Any`).
+    n = length(aux)
+    aux_typed = Vector{PopulationSize{T}}(undef, n)
+    for (i, a) in enumerate(aux)
+        if a isa PopulationSize{T}
+            aux_typed[i] = a
+        elseif a isa PopulationSize
+            aux_typed[i] = PopulationSize{T}(Vector{T}(a.popsize))
+        elseif a isa Real
+            aux_typed[i] = PopulationSize{T}(a)
+        elseif a isa AbstractVector
+            aux_typed[i] = PopulationSize{T}(Vector{T}(a))
+        else
+            throw(ArgumentError("Cannot convert auxiliary value to PopulationSize{T}"))
+        end
+    end
+    AuxClasses = n
+    Community{T, AuxClasses}(species, aux_typed, time)
+end
+
+
+function Community(
         popVals::AbstractVector{T},
         traitVals::AbstractVector{T},
         auxVals::AbstractVector{T}
@@ -97,6 +125,121 @@ function Community(
     Community{T, AuxClasses}(
         species, aux, zero(T)
     )
+end
+
+
+function Community(
+        popMat::AbstractMatrix{T},
+        traitVec::AbstractVector{T}
+    ) where {T<:Real}
+    n_species = size(popMat, 1)
+    n_species == length(traitVec) ||
+        throw(ArgumentError("popMat must have the same number of rows as the length of" *
+                            "traitVec (one trait value per species)"))
+    # Create vector of species where each species has stage classes from a row of popMat
+    # and a single trait value from traitVec
+    species = [Species{T}(
+        [PopulationSize{T}(Vector{T}(popMat[i, :]))],
+        [Phenotype{T}([traitVec[i]])]
+    ) for i in 1:n_species]
+    Community{T, 0}(species, PopulationSize{T}[], zero(T))
+end
+
+
+function Community(
+        popMat::AbstractMatrix{T},
+        traitVec::AbstractVector{T},
+        auxVals::AbstractVector{T}
+    ) where {T<:Real}
+    n_species = size(popMat, 1)
+    n_species == length(traitVec) ||
+        throw(ArgumentError("popMat must have the same number of rows as the length of " *
+                            "traitVec (one trait value per species)"))
+    # Create vector of species where each species has stage classes from a row of popMat
+    # and a single trait value from traitVec
+    species = [Species{T}(
+        [PopulationSize{T}(Vector{T}(popMat[i, :]))],
+        [Phenotype{T}([traitVec[i]])]
+    ) for i in 1:n_species]
+    aux = [PopulationSize{T}([a]) for a in auxVals]
+    AuxClasses = length(aux)
+    Community{T, AuxClasses}(species, aux, zero(T))
+end
+
+
+function Community(
+        popVec::AbstractVector{T},
+        traitMat::AbstractMatrix{T}
+    ) where {T<:Real}
+    n_species = size(traitMat, 1)
+    n_species == length(popVec) ||
+        throw(ArgumentError("popVec must have the same length as the number of rows " *
+                            "of traitMat (one population value per species)"))
+    # Create vector of species where each species has a single population value
+    # and trait dimensions from a row of traitMat
+    species = [Species{T}(
+        [PopulationSize{T}([popVec[i]])],
+        [Phenotype{T}(Vector{T}(traitMat[i, :]))]
+    ) for i in 1:n_species]
+    Community{T, 0}(species, PopulationSize{T}[], zero(T))
+end
+
+
+function Community(
+        popVec::AbstractVector{T},
+        traitMat::AbstractMatrix{T},
+        auxVals::AbstractVector{T}
+    ) where {T<:Real}
+    n_species = size(traitMat, 1)
+    n_species == length(popVec) ||
+        throw(ArgumentError("popVec must have the same length as the number of rows " *
+                            "of traitMat (one population value per species)"))
+    # Create vector of species where each species has a single population value
+    # and trait dimensions from a row of traitMat
+    species = [Species{T}(
+        [PopulationSize{T}([popVec[i]])],
+        [Phenotype{T}(Vector{T}(traitMat[i, :]))]
+    ) for i in 1:n_species]
+    aux = [PopulationSize{T}([a]) for a in auxVals]
+    AuxClasses = length(aux)
+    Community{T, AuxClasses}(species, aux, zero(T))
+end
+
+
+function Community(
+        popMat::AbstractMatrix{T},
+        traitMat::AbstractMatrix{T}
+    ) where {T<:Real}
+    n_species = size(popMat, 1)
+    n_species == size(traitMat, 1) ||
+        throw(ArgumentError("popMat and traitMat must have the same number of rows (species)"))
+    # Create vector of species where each species has stage classes from a row of popMat
+    # and trait dimensions from a row of traitMat
+    species = [Species{T}(
+        [PopulationSize{T}(Vector{T}(popMat[i, :]))],
+        [Phenotype{T}(Vector{T}(traitMat[i, :]))]
+    ) for i in 1:n_species]
+    Community{T, 0}(species, PopulationSize{T}[], zero(T))
+end
+
+
+function Community(
+        popMat::AbstractMatrix{T},
+        traitMat::AbstractMatrix{T},
+        auxVals::AbstractVector{T}
+    ) where {T<:Real}
+    n_species = size(popMat, 1)
+    n_species == size(traitMat, 1) ||
+        throw(ArgumentError("popMat and traitMat must have the same number of rows (species)"))
+    # Create vector of species where each species has stage classes from a row of popMat
+    # and trait dimensions from a row of traitMat
+    species = [Species{T}(
+        [PopulationSize{T}(Vector{T}(popMat[i, :]))],
+        [Phenotype{T}(Vector{T}(traitMat[i, :]))]
+    ) for i in 1:n_species]
+    aux = [PopulationSize{T}([a]) for a in auxVals]
+    AuxClasses = length(aux)
+    Community{T, AuxClasses}(species, aux, zero(T))
 end
 
 

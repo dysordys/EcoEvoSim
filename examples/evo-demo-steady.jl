@@ -1,9 +1,9 @@
 using EcoEvoSim
 using Plots
-using DifferentialEquations
 using DataFrames
 using CSV
 using Random
+using DifferentialEquations
 
 
 growthFn = (z) -> (tanh(sum(z .- 0.5) / 0.2) + 1) / 2 - 0.006692851
@@ -26,10 +26,10 @@ Random.seed!(54321)
 
 lineage = Community([1.0], [0.3], Float64[])
 
-@time lineage = evolve!(lineage, config, 8000);
+@time lineage = evolve!(lineage, config, 1500);
 
 p = plotEvo(lineage)
 # savefig(p, "examples/plot-steady.png")
 
 table = historyToTable(lineage)
-CSV.write("examples/evo.csv", DataFrame(table))
+# CSV.write("examples/evo.csv", DataFrame(table))

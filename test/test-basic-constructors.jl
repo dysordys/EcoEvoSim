@@ -5,7 +5,7 @@ using EcoEvoSim
 numTests = 50
 
 
-@testset "tests_of_basic_ecoevo_types" begin
+@testset "tests_of_basic_constructors" begin
 
     @testset "testing_PopulationSize_constructors" begin
         for _ in 1:numTests
@@ -197,6 +197,158 @@ numTests = 50
 
         # Invalid: pop and trait must have same length
         @test_throws ArgumentError Community(rand(Float64, 3), rand(Float64, 4), Float64[])
+    end
+
+    @testset "testing_Community_constructor_from_popMat_and_traitVec" begin
+        for _ in 1:numTests
+            T = Float64
+            numSpecies = rand(1:5)
+            stageClasses = rand(1:5)
+            popMat = rand(T, numSpecies, stageClasses)
+            traitVec = rand(T, numSpecies)
+
+            comm = Community(popMat, traitVec)
+            @test length(comm.species) == numSpecies
+            @test length(comm.aux) == 0
+            for (i, sp) in enumerate(comm.species)
+                @test length(sp.popsize) == 1
+                @test sp.popsize[1].popsize == vec(popMat[i, :])
+                @test length(sp.trait) == 1
+                @test sp.trait[1].trait == [traitVec[i]]
+            end
+        end
+
+        # Invalid: popMat and traitVec must have matching number of species
+        @test_throws ArgumentError Community(rand(Float64, 3, 2), rand(Float64, 4))
+    end
+
+    @testset "testing_Community_constructor_from_popMat_traitVec_and_aux" begin
+        for _ in 1:numTests
+            T = Float64
+            numSpecies = rand(1:5)
+            stageClasses = rand(1:5)
+            popMat = rand(T, numSpecies, stageClasses)
+            traitVec = rand(T, numSpecies)
+            auxvals = rand(T, rand(0:3))
+
+            comm = Community(popMat, traitVec, auxvals)
+            @test length(comm.species) == numSpecies
+            @test length(comm.aux) == length(auxvals)
+            for (i, sp) in enumerate(comm.species)
+                @test length(sp.popsize) == 1
+                @test sp.popsize[1].popsize == vec(popMat[i, :])
+                @test length(sp.trait) == 1
+                @test sp.trait[1].trait == [traitVec[i]]
+            end
+            for (a, v) in zip(comm.aux, auxvals)
+                @test a.popsize[1] == v
+            end
+        end
+
+        # Invalid: popMat and traitVec must have matching number of species
+        @test_throws ArgumentError Community(rand(Float64, 3, 2), rand(Float64, 4), Float64[])
+    end
+
+    @testset "testing_Community_constructor_from_popVec_and_traitMat" begin
+        for _ in 1:numTests
+            T = Float64
+            numSpecies = rand(1:5)
+            traitDim = rand(1:5)
+            popVec = rand(T, numSpecies)
+            traitMat = rand(T, numSpecies, traitDim)
+
+            comm = Community(popVec, traitMat)
+            @test length(comm.species) == numSpecies
+            @test length(comm.aux) == 0
+            for (i, sp) in enumerate(comm.species)
+                @test length(sp.popsize) == 1
+                @test sp.popsize[1].popsize == [popVec[i]]
+                @test length(sp.trait) == 1
+                @test sp.trait[1].trait == vec(traitMat[i, :])
+            end
+        end
+
+        # Invalid: popVec and traitMat must have matching number of species
+        @test_throws ArgumentError Community(rand(Float64, 3), rand(Float64, 4, 2))
+    end
+
+    @testset "testing_Community_constructor_from_popVec_traitMat_and_aux" begin
+        for _ in 1:numTests
+            T = Float64
+            numSpecies = rand(1:5)
+            traitDim = rand(1:5)
+            popVec = rand(T, numSpecies)
+            traitMat = rand(T, numSpecies, traitDim)
+            auxvals = rand(T, rand(0:3))
+
+            comm = Community(popVec, traitMat, auxvals)
+            @test length(comm.species) == numSpecies
+            @test length(comm.aux) == length(auxvals)
+            for (i, sp) in enumerate(comm.species)
+                @test length(sp.popsize) == 1
+                @test sp.popsize[1].popsize == [popVec[i]]
+                @test length(sp.trait) == 1
+                @test sp.trait[1].trait == vec(traitMat[i, :])
+            end
+            for (a, v) in zip(comm.aux, auxvals)
+                @test a.popsize[1] == v
+            end
+        end
+
+        # Invalid: popVec and traitMat must have matching number of species
+        @test_throws ArgumentError Community(rand(Float64, 3), rand(Float64, 4, 2), Float64[])
+    end
+
+    @testset "testing_Community_constructor_from_popMat_and_traitMat" begin
+        for _ in 1:numTests
+            T = Float64
+            numSpecies = rand(1:5)
+            stageClasses = rand(1:5)
+            traitDim = rand(1:5)
+            popMat = rand(T, numSpecies, stageClasses)
+            traitMat = rand(T, numSpecies, traitDim)
+
+            comm = Community(popMat, traitMat)
+            @test length(comm.species) == numSpecies
+            @test length(comm.aux) == 0
+            for (i, sp) in enumerate(comm.species)
+                @test length(sp.popsize) == 1
+                @test sp.popsize[1].popsize == vec(popMat[i, :])
+                @test length(sp.trait) == 1
+                @test sp.trait[1].trait == vec(traitMat[i, :])
+            end
+        end
+
+        # Invalid: popMat and traitMat must have matching number of species
+        @test_throws ArgumentError Community(rand(Float64, 3, 2), rand(Float64, 4, 2))
+    end
+
+    @testset "testing_Community_constructor_from_popMat_traitMat_and_aux" begin
+        for _ in 1:numTests
+            T = Float64
+            numSpecies = rand(1:5)
+            stageClasses = rand(1:5)
+            traitDim = rand(1:5)
+            popMat = rand(T, numSpecies, stageClasses)
+            traitMat = rand(T, numSpecies, traitDim)
+            auxvals = rand(T, rand(0:3))
+
+            comm = Community(popMat, traitMat, auxvals)
+            @test length(comm.species) == numSpecies
+            @test length(comm.aux) == length(auxvals)
+            for (i, sp) in enumerate(comm.species)
+                @test length(sp.popsize) == 1
+                @test sp.popsize[1].popsize == vec(popMat[i, :])
+                @test length(sp.trait) == 1
+                @test sp.trait[1].trait == vec(traitMat[i, :])
+            end
+            for (a, v) in zip(comm.aux, auxvals)
+                @test a.popsize[1] == v
+            end
+        end
+
+        # Invalid: popMat and traitMat must have matching number of species
+        @test_throws ArgumentError Community(rand(Float64, 3, 2), rand(Float64, 4, 2), Float64[])
     end
 
 
