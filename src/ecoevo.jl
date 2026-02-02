@@ -67,7 +67,8 @@ Configuration for eco-evolutionary simulations.
 
 # Fields
 - `ecoDyn::EcoDynamics`: Factory function taking `Community` and returning ODE function
-- `mutationGenerator::MutGenerator`: Function generating mutants from community (takes only community as input; captures invaderPopsize via closure)
+- `mutationGenerator::MutGenerator`: Function generating mutants from community
+  (takes only community as input; captures invaderPopsize via closure)
 - `integrationParams::IntegrationParams`: ODE integration parameters
 - `extThreshold::T`: Population size below which species go extinct
 
@@ -290,7 +291,8 @@ end
 # User-facing methods with uniform random selection
 
 """
-    generateMutant(community::Community{T, AuxClasses}, invaderPopsize::T, covMat::AbstractMatrix{T}) where {T, AuxClasses}
+    generateMutant(community::Community{T, AuxClasses}, invaderPopsize::T,
+                   covMat::AbstractMatrix{T}) where {T, AuxClasses}
 
 Generate a mutant with uniform random parent selection (full covariance matrix).
 """
@@ -302,7 +304,8 @@ generateMutant(
 
 
 """
-    generateMutant(community::Community{T, AuxClasses}, invaderPopsize::T, variance::T) where {T, AuxClasses}
+    generateMutant(community::Community{T, AuxClasses}, invaderPopsize::T,
+                   variance::T) where {T, AuxClasses}
 
 Generate a mutant with uniform random parent selection (diagonal covariance).
 """
@@ -320,7 +323,8 @@ end
 # User-facing methods with population-weighted random selection
 
 """
-    generateMutantWeighted(community::Community{T, AuxClasses}, invaderPopsize::T, covMat::AbstractMatrix{T}) where {T, AuxClasses}
+    generateMutantWeighted(community::Community{T, AuxClasses}, invaderPopsize::T,
+                           covMat::AbstractMatrix{T}) where {T, AuxClasses}
 
 Generate a mutant with population-weighted parent selection (full covariance matrix).
 """
@@ -333,7 +337,8 @@ generateMutantWeighted(
 
 
 """
-    generateMutantWeighted(community::Community{T, AuxClasses}, invaderPopsize::T, variance::T) where {T, AuxClasses}
+    generateMutantWeighted(community::Community{T, AuxClasses}, invaderPopsize::T,
+                           variance::T) where {T, AuxClasses}
 
 Generate a mutant with population-weighted parent selection (diagonal covariance).
 """
@@ -349,7 +354,8 @@ end
 
 
 """
-    singleEvoStep(community::Community{T, AuxClasses}, config::EcoEvoConfig{T}) where {T, AuxClasses}
+    singleEvoStep(community::Community{T, AuxClasses},
+                  config::EcoEvoConfig{T}) where {T, AuxClasses}
 
 Perform one eco-evolutionary step:
 1. Add a mutant species using the mutation generator from config
@@ -370,7 +376,8 @@ end
 
 
 """
-    evolve!(history::EvoHistory{T, AuxClasses}, config::EcoEvoConfig{T}, nMutEvents::Int) where {T, AuxClasses}
+    evolve!(history::EvoHistory{T, AuxClasses}, config::EcoEvoConfig{T},
+            nMutEvents::Int) where {T, AuxClasses}
 
 Run the main eco-evolutionary simulation loop:
 1. Start with the last community in history
@@ -420,7 +427,8 @@ end
 
 
 """
-    evolve!(community::Community{T, AuxClasses}, config::EcoEvoConfig{T}, nMutEvents::Int; showProgress::Bool=true) where {T, AuxClasses}
+    evolve!(community::Community{T, AuxClasses}, config::EcoEvoConfig{T}, nMutEvents::Int;
+            showProgress::Bool=true) where {T, AuxClasses}
 
 Convenience method that creates an EvoHistory from a single initial community
 and runs the evolutionary simulation.
@@ -445,7 +453,8 @@ end
 
 
 """
-    evolve(history::EvoHistory{T, AuxClasses}, config::EcoEvoConfig{T}, nMutEvents::Int; showProgress::Bool=true) where {T, AuxClasses}
+    evolve(history::EvoHistory{T, AuxClasses}, config::EcoEvoConfig{T}, nMutEvents::Int;
+           showProgress::Bool=true) where {T, AuxClasses}
 
 Non-mutating version of `evolve!`. Creates a deep copy of the history and runs
 the evolutionary simulation on the copy, leaving the original unchanged.
@@ -498,7 +507,8 @@ end
 
 
 """
-    evolve(community::Community{T, AuxClasses}, config::EcoEvoConfig{T}, nMutEvents::Int; showProgress::Bool=true) where {T, AuxClasses}
+    evolve(community::Community{T, AuxClasses}, config::EcoEvoConfig{T}, nMutEvents::Int;
+           showProgress::Bool=true) where {T, AuxClasses}
 
 Non-mutating version of `evolve!` that starts from a Community.
 
