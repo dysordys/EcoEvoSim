@@ -61,14 +61,13 @@ end
 
 config = EcoEvoConfig(
     ecoDyn = comm -> twopatch(comm; d = 1.0, mu = 0.1, alpha = 1.0),
-    mutationGenerator = (comm, cfg) -> generateMutant(comm, cfg, 0.003^2),
+    mutationGenerator = (comm) -> generateMutant(comm, 0.001, 0.003^2),
     integrationParams = IntegrationParams(
         maxTime = Inf,
         algorithm = DynamicSS(),
         abstol = 1e-10,
         reltol = 1e-8
     ),
-    invaderPopsize = 0.001,
     extThreshold = 0.003
 )
 

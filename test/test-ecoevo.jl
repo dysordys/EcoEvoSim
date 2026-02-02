@@ -38,20 +38,15 @@ numTests = 50
         params = IntegrationParams(maxTime=100.0, abstol=1e-6, reltol=0.1)
 
         # Valid construction
-        config = EcoEvoConfig(ecoDyn, mutGen, params, 0.001, 1e-8)
+        config = EcoEvoConfig(ecoDyn, mutGen, params, 1e-8)
         @test config.ecoDyn === ecoDyn
         @test config.mutationGenerator === mutGen
         @test config.integrationParams === params
-        @test config.invaderPopsize == 0.001
         @test config.extThreshold == 1e-8
 
-        # Invalid: non-positive invaderPopsize
-        @test_throws ArgumentError EcoEvoConfig(ecoDyn, mutGen, params, -0.001, 1e-8)
-        @test_throws ArgumentError EcoEvoConfig(ecoDyn, mutGen, params, 0.0, 1e-8)
-
         # Invalid: non-positive extThreshold
-        @test_throws ArgumentError EcoEvoConfig(ecoDyn, mutGen, params, 0.001, -1e-8)
-        @test_throws ArgumentError EcoEvoConfig(ecoDyn, mutGen, params, 0.001, 0.0)
+        @test_throws ArgumentError EcoEvoConfig(ecoDyn, mutGen, params, -1e-8)
+        @test_throws ArgumentError EcoEvoConfig(ecoDyn, mutGen, params, 0.0)
     end
 
 
@@ -75,21 +70,21 @@ numTests = 50
             ecoDyn = (x, t, p) -> -x
             mutGen = (x) -> x .+ 0.01
             params = IntegrationParams(maxTime=100.0, abstol=1e-6, reltol=0.1)
-            config = EcoEvoConfig(ecoDyn, mutGen, params, 0.001, 1e-8)
+            config = EcoEvoConfig(ecoDyn, mutGen, params, 1e-8)
 
             # Create covariance matrix
             variance = 0.01
             covMat = Matrix{Float64}(variance * I(traitDim))
 
             # Generate mutant
-            newComm = generateMutant(comm, config, covMat)
+            newComm = generateMutant(comm, 0.001, covMat)
 
             # Check that community has one more species
             @test numSpecies(newComm) == numSpecies(comm) + 1
 
             # Check that the mutant has the right population size
             mutantPopsize = popsizes(newComm, numSpecies(newComm))
-            @test mutantPopsize[1] == config.invaderPopsize
+            @test mutantPopsize[1] == 0.001
 
             # Check that mutant trait is different from all parents
             mutantTrait = traits(newComm, numSpecies(newComm))
@@ -122,18 +117,18 @@ numTests = 50
             ecoDyn = (x, t, p) -> -x
             mutGen = (x) -> x .+ 0.01
             params = IntegrationParams(maxTime=100.0, abstol=1e-6, reltol=0.1)
-            config = EcoEvoConfig(ecoDyn, mutGen, params, 0.001, 1e-8)
+            config = EcoEvoConfig(ecoDyn, mutGen, params, 1e-8)
 
             # Generate mutant with scalar variance
             variance = 0.01
-            newComm = generateMutant(comm, config, variance)
+            newComm = generateMutant(comm, 0.001, variance)
 
             # Check that community has one more species
             @test numSpecies(newComm) == numSpecies(comm) + 1
 
             # Check that the mutant has the right population size
             mutantPopsize = popsizes(newComm, numSpecies(newComm))
-            @test mutantPopsize[1] == config.invaderPopsize
+            @test mutantPopsize[1] == 0.001
 
             # Check trait dimension matches
             mutantTrait = traits(newComm, numSpecies(newComm))
@@ -146,10 +141,10 @@ numTests = 50
         ecoDyn = (x, t, p) -> -x
         mutGen = (x) -> x .+ 0.01
         params = IntegrationParams(maxTime=100.0, abstol=1e-6, reltol=0.1)
-        config = EcoEvoConfig(ecoDyn, mutGen, params, 0.001, 1e-8)
+        config = EcoEvoConfig(ecoDyn, mutGen, params, 1e-8)
 
-        @test_throws ArgumentError generateMutant(comm, config, -0.01)
-        @test_throws ArgumentError generateMutant(comm, config, 0.0)
+        @test_throws ArgumentError generateMutant(comm, 0.001, -0.01)
+        @test_throws ArgumentError generateMutant(comm, 0.001, 0.0)
     end
 
 
@@ -175,7 +170,7 @@ numTests = 50
             ecoDyn = (x, t, p) -> -x
             mutGen = (x) -> x .+ 0.01
             params = IntegrationParams(maxTime=100.0, abstol=1e-6, reltol=0.1)
-            config = EcoEvoConfig(ecoDyn, mutGen, params, 0.001, 1e-8)
+            config = EcoEvoConfig(ecoDyn, mutGen, params, 1e-8)
 
             # Create covariance matrix
             variance = 0.01
@@ -187,7 +182,7 @@ numTests = 50
             parentCounts = zeros(Int, nSpecies)
 
             for trial in 1:nTrials
-                newComm = generateMutantWeighted(comm, config, covMat)
+                newComm = generateMutantWeighted(comm, 0.001, covMat)
                 mutantTrait = traits(newComm, numSpecies(newComm))
 
                 # Find which parent was used (closest trait)
@@ -234,18 +229,18 @@ numTests = 50
             ecoDyn = (x, t, p) -> -x
             mutGen = (x) -> x .+ 0.01
             params = IntegrationParams(maxTime=100.0, abstol=1e-6, reltol=0.1)
-            config = EcoEvoConfig(ecoDyn, mutGen, params, 0.001, 1e-8)
+            config = EcoEvoConfig(ecoDyn, mutGen, params, 1e-8)
 
             # Generate mutant with scalar variance
             variance = 0.01
-            newComm = generateMutantWeighted(comm, config, variance)
+            newComm = generateMutantWeighted(comm, 0.001, variance)
 
             # Check that community has one more species
             @test numSpecies(newComm) == numSpecies(comm) + 1
 
             # Check that the mutant has the right population size
             mutantPopsize = popsizes(newComm, numSpecies(newComm))
-            @test mutantPopsize[1] == config.invaderPopsize
+            @test mutantPopsize[1] == 0.001
 
             # Check trait dimension matches
             mutantTrait = traits(newComm, numSpecies(newComm))
@@ -258,10 +253,10 @@ numTests = 50
         ecoDyn = (x, t, p) -> -x
         mutGen = (x) -> x .+ 0.01
         params = IntegrationParams(maxTime=100.0, abstol=1e-6, reltol=0.1)
-        config = EcoEvoConfig(ecoDyn, mutGen, params, 0.001, 1e-8)
+        config = EcoEvoConfig(ecoDyn, mutGen, params, 1e-8)
 
-        @test_throws ArgumentError generateMutantWeighted(comm, config, -0.01)
-        @test_throws ArgumentError generateMutantWeighted(comm, config, 0.0)
+        @test_throws ArgumentError generateMutantWeighted(comm, 0.001, -0.01)
+        @test_throws ArgumentError generateMutantWeighted(comm, 0.001, 0.0)
     end
 
 
@@ -273,15 +268,15 @@ numTests = 50
         ecoDyn = (x, t, p) -> -x
         mutGen = (x) -> x .+ 0.01
         params = IntegrationParams(maxTime=100.0, abstol=1e-6, reltol=0.1)
-        config = EcoEvoConfig(ecoDyn, mutGen, params, 0.001, 1e-8)
+        config = EcoEvoConfig(ecoDyn, mutGen, params, 1e-8)
 
         # Try with wrong-sized covariance matrix (3x3 instead of 2x2)
         wrongCovMat = Matrix{Float64}(0.01 * I(3))
-        @test_throws ArgumentError generateMutant(comm, config, wrongCovMat)
+        @test_throws ArgumentError generateMutant(comm, 0.001, wrongCovMat)
 
         # Try with non-square matrix
         wrongCovMat2 = rand(2, 3)
-        @test_throws ArgumentError generateMutant(comm, config, wrongCovMat2)
+        @test_throws ArgumentError generateMutant(comm, 0.001, wrongCovMat2)
     end
 
 
@@ -303,13 +298,12 @@ numTests = 50
 
             # Simple exponential decay dynamics
             ecoDynFactory = (community) -> (u, p, t) -> -u
-            mutGen = (c, cfg) -> generateMutant(c, cfg, 0.01)
+            mutGen = (c) -> generateMutant(c, 1.0, 0.01)
             params = IntegrationParams(maxTime=1.0, abstol=1e-8, reltol=1e-6)
             config = EcoEvoConfig(
                 ecoDyn=ecoDynFactory,
                 mutationGenerator=mutGen,
                 integrationParams=params,
-                invaderPopsize=0.001,
                 extThreshold=1e-8
             )
 
@@ -370,13 +364,12 @@ numTests = 50
                 end
             end
 
-            mutGen = (c, cfg) -> generateMutant(c, cfg, 0.01)
+            mutGen = (c) -> generateMutant(c, 1.0, 0.01)
             params = IntegrationParams(maxTime=1.0, abstol=1e-8, reltol=1e-6)
             config = EcoEvoConfig(
                 ecoDyn=testDynamicsFactory,
                 mutationGenerator=mutGen,
                 integrationParams=params,
-                invaderPopsize=0.001,
                 extThreshold=1e-8
             )
 
@@ -413,14 +406,13 @@ numTests = 50
 
             # Slow exponential decay
             ecoDynFactory = (community) -> (u, p, t) -> -0.1 * u
-            mutGen = (c, cfg) -> generateMutant(c, cfg, 0.01)
+            mutGen = (c) -> generateMutant(c, 1.0, 0.01)
             params = IntegrationParams(maxTime=1.0, abstol=1e-8, reltol=1e-6)
             extThreshold = 1e-8
             config = EcoEvoConfig(
                 ecoDyn=ecoDynFactory,
                 mutationGenerator=mutGen,
                 integrationParams=params,
-                invaderPopsize=1.0,
                 extThreshold=extThreshold
             )
 
@@ -458,14 +450,13 @@ numTests = 50
 
         # Very slow dynamics so populations don't change much
         ecoDynFactory = (community) -> (u, p, t) -> -0.001 * u
-        mutGen = (c, cfg) -> generateMutant(c, cfg, 0.01)
-        params = IntegrationParams(maxTime=0.1, abstol=1e-8, reltol=1e-6)
         invaderPop = 2.5
+        mutGen = (c) -> generateMutant(c, invaderPop, 0.01)
+        params = IntegrationParams(maxTime=0.1, abstol=1e-8, reltol=1e-6)
         config = EcoEvoConfig(
             ecoDyn=ecoDynFactory,
             mutationGenerator=mutGen,
             integrationParams=params,
-            invaderPopsize=invaderPop,
             extThreshold=1e-8
         )
 
@@ -493,13 +484,12 @@ numTests = 50
         comm = Community(species, PopulationSize{Float64}[], 0.0)
 
         ecoDynFactory = (community) -> (u, p, t) -> -0.01 * u
-        mutGen = (c, cfg) -> generateMutant(c, cfg, 0.01)
+        mutGen = (c) -> generateMutant(c, 1.0, 0.01)
         params = IntegrationParams(maxTime=1.0, abstol=1e-8, reltol=1e-6)
         config = EcoEvoConfig(
             ecoDyn=ecoDynFactory,
             mutationGenerator=mutGen,
             integrationParams=params,
-            invaderPopsize=1.0,
             extThreshold=1e-8
         )
 
@@ -528,13 +518,12 @@ numTests = 50
 
         # Very slow dynamics so populations don't change much
         ecoDynFactory = (community) -> (u, p, t) -> -0.001 * u
-        mutGen = (c, cfg) -> generateMutant(c, cfg, 0.01)
+        mutGen = (c) -> generateMutant(c, 1.0, 0.01)
         params = IntegrationParams(maxTime=0.1, abstol=1e-8, reltol=1e-6)
         config = EcoEvoConfig(
             ecoDyn=ecoDynFactory,
             mutationGenerator=mutGen,
             integrationParams=params,
-            invaderPopsize=1.0,
             extThreshold=1e-8
         )
 
@@ -573,13 +562,12 @@ numTests = 50
 
         # Slow exponential decay
         ecoDynFactory = (community) -> (u, p, t) -> -0.01 * u
-        mutGen = (c, cfg) -> generateMutant(c, cfg, 0.01)
+        mutGen = (c) -> generateMutant(c, 1.0, 0.01)
         params = IntegrationParams(maxTime=1.0, abstol=1e-8, reltol=1e-6)
         config = EcoEvoConfig(
             ecoDyn=ecoDynFactory,
             mutationGenerator=mutGen,
             integrationParams=params,
-            invaderPopsize=2.0,
             extThreshold=1e-8
         )
 
@@ -618,13 +606,12 @@ numTests = 50
 
         # Stronger decay
         ecoDynFactory = (community) -> (u, p, t) -> -0.5 * u
-        mutGen = (c, cfg) -> generateMutant(c, cfg, 0.01)
+        mutGen = (c) -> generateMutant(c, 1.0, 0.01)
         params = IntegrationParams(maxTime=2.0, abstol=1e-8, reltol=1e-6)
         config = EcoEvoConfig(
             ecoDyn=ecoDynFactory,
             mutationGenerator=mutGen,
             integrationParams=params,
-            invaderPopsize=1.0,
             extThreshold=0.1  # Higher threshold to cause extinctions
         )
 
@@ -651,13 +638,12 @@ numTests = 50
         emptyHistory = EvoHistory{Float64, 0}(Community{Float64, 0}[])
 
         ecoDynFactory = (community) -> (u, p, t) -> -0.01 * u
-        mutGen = (c, cfg) -> generateMutant(c, cfg, 0.01)
+        mutGen = (c) -> generateMutant(c, 1.0, 0.01)
         params = IntegrationParams(maxTime=1.0, abstol=1e-8, reltol=1e-6)
         config = EcoEvoConfig(
             ecoDyn=ecoDynFactory,
             mutationGenerator=mutGen,
             integrationParams=params,
-            invaderPopsize=1.0,
             extThreshold=1e-8
         )
 
@@ -672,13 +658,12 @@ numTests = 50
         history = EvoHistory{Float64, 0}([initialComm])
 
         ecoDynFactory = (community) -> (u, p, t) -> -0.01 * u
-        mutGen = (c, cfg) -> generateMutant(c, cfg, 0.01)
+        mutGen = (c) -> generateMutant(c, 1.0, 0.01)
         params = IntegrationParams(maxTime=1.0, abstol=1e-8, reltol=1e-6)
         config = EcoEvoConfig(
             ecoDyn=ecoDynFactory,
             mutationGenerator=mutGen,
             integrationParams=params,
-            invaderPopsize=1.0,
             extThreshold=1e-8
         )
 
@@ -698,13 +683,12 @@ numTests = 50
 
         # Very slow dynamics
         ecoDynFactory = (community) -> (u, p, t) -> -0.001 * u
-        mutGen = (c, cfg) -> generateMutant(c, cfg, 0.01)
+        mutGen = (c) -> generateMutant(c, 1.0, 0.01)
         params = IntegrationParams(maxTime=0.1, abstol=1e-8, reltol=1e-6)
         config = EcoEvoConfig(
             ecoDyn=ecoDynFactory,
             mutationGenerator=mutGen,
             integrationParams=params,
-            invaderPopsize=1.0,
             extThreshold=1e-8
         )
 
@@ -736,13 +720,12 @@ numTests = 50
         comm2 = Community(species, PopulationSize{Float64}[], 0.0)
 
         ecoDynFactory = (community) -> (u, p, t) -> -0.01 * u
-        mutGen = (c, cfg) -> generateMutant(c, cfg, 0.01)
+        mutGen = (c) -> generateMutant(c, 1.0, 0.01)
         params = IntegrationParams(maxTime=1.0, abstol=1e-8, reltol=1e-6)
         config = EcoEvoConfig(
             ecoDyn=ecoDynFactory,
             mutationGenerator=mutGen,
             integrationParams=params,
-            invaderPopsize=2.0,
             extThreshold=1e-8
         )
 
@@ -766,13 +749,12 @@ numTests = 50
         initialComm = Community(species, PopulationSize{Float64}[], 0.0)
 
         ecoDynFactory = (community) -> (u, p, t) -> -0.01 * u
-        mutGen = (c, cfg) -> generateMutant(c, cfg, 0.01)
+        mutGen = (c) -> generateMutant(c, 1.0, 0.01)
         params = IntegrationParams(maxTime=1.0, abstol=1e-8, reltol=1e-6)
         config = EcoEvoConfig(
             ecoDyn=ecoDynFactory,
             mutationGenerator=mutGen,
             integrationParams=params,
-            invaderPopsize=1.0,
             extThreshold=1e-8
         )
 
@@ -808,13 +790,12 @@ numTests = 50
         initialComm = Community(species, PopulationSize{Float64}[], 0.0)
 
         ecoDynFactory = (community) -> (u, p, t) -> -0.001 * u
-        mutGen = (c, cfg) -> generateMutant(c, cfg, 0.01)
+        mutGen = (c) -> generateMutant(c, 1.0, 0.01)
         params = IntegrationParams(maxTime=0.5, abstol=1e-8, reltol=1e-6)
         config = EcoEvoConfig(
             ecoDyn=ecoDynFactory,
             mutationGenerator=mutGen,
             integrationParams=params,
-            invaderPopsize=1.5,
             extThreshold=1e-8
         )
 
@@ -841,13 +822,12 @@ numTests = 50
         comm2 = Community(species, PopulationSize{Float64}[], 0.0)
 
         ecoDynFactory = (community) -> (u, p, t) -> -0.02 * u
-        mutGen = (c, cfg) -> generateMutant(c, cfg, 0.015)
+        mutGen = (c) -> generateMutant(c, 1.0, 0.015)
         params = IntegrationParams(maxTime=2.0, abstol=1e-8, reltol=1e-6)
         config = EcoEvoConfig(
             ecoDyn=ecoDynFactory,
             mutationGenerator=mutGen,
             integrationParams=params,
-            invaderPopsize=1.2,
             extThreshold=1e-8
         )
 
@@ -868,13 +848,12 @@ numTests = 50
         initialComm = Community(species, PopulationSize{Float64}[], 0.0)
 
         ecoDynFactory = (community) -> (u, p, t) -> -0.005 * u
-        mutGen = (c, cfg) -> generateMutant(c, cfg, 0.02)
+        mutGen = (c) -> generateMutant(c, 1.0, 0.02)
         params = IntegrationParams(maxTime=1.5, abstol=1e-8, reltol=1e-6)
         config = EcoEvoConfig(
             ecoDyn=ecoDynFactory,
             mutationGenerator=mutGen,
             integrationParams=params,
-            invaderPopsize=0.8,
             extThreshold=1e-8
         )
 

@@ -48,7 +48,7 @@ Here is a simple example demonstrating how to set up and run an evolutionary sim
 using EcoEvoSim
 using Plots
 
-# Define the ecological dynamics
+# Define ecological dynamics
 # Quadratic intrinsic growth, with maximum at z = 0 and roots at +/-0.5:
 growthFn = z -> 1 - sum(z.^2) / 0.5^2
 # Gaussian interaction kernel with width 0.15:
@@ -59,11 +59,9 @@ config = EcoEvoConfig(
     # Use Lotka-Volterra dynamics, with the specified functions growthFn and kernelFn:
     ecoDyn = lotkaVolterra(growthFn, kernelFn),
     # Generate normally distributed mutations with standard deviation 0.002:
-    mutationGenerator = (comm, confg) -> generateMutant(comm, confg, 0.002^2),
+    mutationGenerator = (comm) -> generateMutant(comm, 0.001, 0.002^2),
     # Integrate each ecological step for 1.0e10 time units:
     integrationParams = IntegrationParams(maxTime = 1.0e10),
-    # Each new mutant has a population size of 0.001:
-    invaderPopsize = 0.001,
     # Species with pop. size below 0.003 after eco. simulation are removed:
     extThreshold = 0.003
 )

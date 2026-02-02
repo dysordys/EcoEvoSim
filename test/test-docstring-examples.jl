@@ -139,16 +139,14 @@ using DifferentialEquations
         # EcoEvoConfig examples
         growthFn(z) = 1.0 - sum(z.^2)
         kernelFn(z_i, z_j) = -exp(-sum((z_i .- z_j).^2) / 0.15^2)
-        mutationGen(comm, cfg) = generateMutant(comm, cfg, 0.01)
+        mutationGen(comm) = generateMutant(comm, 0.001, 0.01)
 
         config = EcoEvoConfig(
             ecoDyn = lotkaVolterra(growthFn, kernelFn),
             mutationGenerator = mutationGen,
             integrationParams = IntegrationParams(maxTime = 50.0),
-            invaderPopsize = 0.001,
             extThreshold = 0.003
         )
-        @test config.invaderPopsize == 0.001
         @test config.extThreshold == 0.003
     end
 
@@ -159,9 +157,8 @@ using DifferentialEquations
 
         config = EcoEvoConfig(
             ecoDyn = lotkaVolterra(growthFn, kernelFn),
-            mutationGenerator = (comm, cfg) -> generateMutant(comm, cfg, 0.01),
+            mutationGenerator = (comm) -> generateMutant(comm, 0.001, 0.01),
             integrationParams = IntegrationParams(maxTime = 10.0, abstol=1e-6, reltol=1e-4),
-            invaderPopsize = 0.001,
             extThreshold = 0.003
         )
 
@@ -183,14 +180,14 @@ using DifferentialEquations
 
         # generateMutant examples
         Random.seed!(42)
-        @test_nowarn generateMutant(comm, config, 0.01)
+        @test_nowarn generateMutant(comm, 0.001, 0.01)
         covMat = [0.01;;]  # 1x1 matrix
-        @test_nowarn generateMutant(comm, config, covMat)
+        @test_nowarn generateMutant(comm, 0.001, covMat)
 
         # generateMutantWeighted examples
         Random.seed!(42)
-        @test_nowarn generateMutantWeighted(comm, config, 0.01)
-        @test_nowarn generateMutantWeighted(comm, config, covMat)
+        @test_nowarn generateMutantWeighted(comm, 0.001, 0.01)
+        @test_nowarn generateMutantWeighted(comm, 0.001, covMat)
 
         # singleEvoStep examples
         Random.seed!(42)
@@ -219,9 +216,8 @@ using DifferentialEquations
 
         config = EcoEvoConfig(
             ecoDyn = lotkaVolterra(growthFn, kernelFn),
-            mutationGenerator = (comm, cfg) -> generateMutant(comm, cfg, 0.01),
+            mutationGenerator = (comm) -> generateMutant(comm, 0.001, 0.01),
             integrationParams = IntegrationParams(maxTime = 10.0, abstol=1e-6, reltol=1e-4),
-            invaderPopsize = 0.001,
             extThreshold = 0.003
         )
 
@@ -240,9 +236,8 @@ result = ecoDyn(community, config)
 
         config = EcoEvoConfig(
             ecoDyn = lotkaVolterra(growthFn, kernelFn),
-            mutationGenerator = (comm, cfg) -> generateMutant(comm, cfg, 0.01),
+            mutationGenerator = (comm) -> generateMutant(comm, 0.001, 0.01),
             integrationParams = IntegrationParams(maxTime = 10.0, abstol=1e-6, reltol=1e-4),
-            invaderPopsize = 0.001,
             extThreshold = 0.003
         )
 
@@ -260,9 +255,8 @@ result = ecoDyn(community, config)
 
         config = EcoEvoConfig(
             ecoDyn = lotkaVolterra(growthFn, kernelFn),
-            mutationGenerator = (comm, cfg) -> generateMutant(comm, cfg, 0.01),
+            mutationGenerator = (comm) -> generateMutant(comm, 0.001, 0.01),
             integrationParams = IntegrationParams(maxTime = 10.0, abstol=1e-6, reltol=1e-4),
-            invaderPopsize = 0.001,
             extThreshold = 0.003
         )
 

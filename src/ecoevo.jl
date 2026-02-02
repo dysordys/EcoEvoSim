@@ -67,18 +67,16 @@ Configuration for eco-evolutionary simulations.
 
 # Fields
 - `ecoDyn::EcoDynamics`: Factory function taking `Community` and returning ODE function
-- `mutationGenerator::MutGenerator`: Function generating mutants from community and config
+- `mutationGenerator::MutGenerator`: Function generating mutants from community (takes only community as input; captures invaderPopsize via closure)
 - `integrationParams::IntegrationParams`: ODE integration parameters
-- `invaderPopsize::T`: Initial population size for new mutants
 - `extThreshold::T`: Population size below which species go extinct
 
 # Example
 ```julia
 config = EcoEvoConfig(
     ecoDyn = lotkaVolterra(growthFn, interactionFn),
-    mutationGenerator = (comm, cfg) -> generateMutant(comm, cfg, 0.01),
+    mutationGenerator = (comm) -> generateMutant(comm, 0.001, 0.01),
     integrationParams = IntegrationParams(maxTime = 50.0),
-    invaderPopsize = 0.001,
     extThreshold = 0.003
 )
 ```
@@ -87,19 +85,15 @@ struct EcoEvoConfig{T<:Real, EcoDynamics, MutGenerator, Alg}
     ecoDyn :: EcoDynamics  # Factory function: Community -> (u, p, t) -> du
     mutationGenerator :: MutGenerator   # Function generating mutant traits
     integrationParams :: IntegrationParams{T, Alg}
-    invaderPopsize :: T # Population size at which new mutants are introduced
     extThreshold :: T  # Population size below which species are considered extinct
     function EcoEvoConfig{T, ED, MG, Alg}(
             ecoDyn::ED,
             mutationGenerator::MG,
             integrationParams::IntegrationParams{T, Alg},
-            invaderPopsize::T,
             extThreshold::T
         ) where {T<:Real, ED, MG, Alg}
-        invaderPopsize > 0 || throw(ArgumentError("invaderPopsize must be positive"))
         extThreshold > 0 || throw(ArgumentError("extThreshold must be positive"))
-        new{T, ED, MG, Alg}(ecoDyn, mutationGenerator, integrationParams,
-                            invaderPopsize, extThreshold)
+        new{T, ED, MG, Alg}(ecoDyn, mutationGenerator, integrationParams, extThreshold)
     end
 end
 
@@ -107,11 +101,10 @@ function EcoEvoConfig(
         ecoDyn::ED,
         mutationGenerator::MG,
         integrationParams::IntegrationParams{T, Alg},
-        invaderPopsize::T,
         extThreshold::T
     ) where {T<:Real, ED, MG, Alg}
     EcoEvoConfig{T, ED, MG, Alg}(
-        ecoDyn, mutationGenerator, integrationParams, invaderPopsize, extThreshold
+        ecoDyn, mutationGenerator, integrationParams, extThreshold
     )
 end
 
@@ -119,10 +112,9 @@ end
 function EcoEvoConfig(; ecoDyn::ED,
                         mutationGenerator::MG,
                         integrationParams::IntegrationParams{T, Alg},
-                        invaderPopsize::Real,
                         extThreshold::Real) where {T<:Real, ED, MG, Alg}
     EcoEvoConfig{T, ED, MG, Alg}(ecoDyn, mutationGenerator, integrationParams,
-                 convert(T, invaderPopsize), convert(T, extThreshold))
+                 convert(T, extThreshold))
 end
 
 
@@ -254,17 +246,18 @@ end
 
 
 """
-    generateMutant(community::Community{T, AuxClasses}, config::EcoEvoConfig{T}, covMat::AbstractMatrix{T}, selectionFunc) where {T, AuxClasses}
+    generateMutant(community::Community{T, AuxClasses}, invaderPopsize::T,
+                   covMat::AbstractMatrix{T}, selectionFunc) where {T, AuxClasses}
 
 General mutant generation function with customizable parent selection.
 - Selects a parent species using the provided selection function
 - Creates a mutant with trait = parent trait + random variate from Normal(0, covMat)
-- Sets mutant population size to config.invaderPopsize
+- Sets mutant population size to invaderPopsize
 - Returns a new community with the mutant appended to the species list
 """
 function generateMutant(
         community::Community{T, AuxClasses},
-        config::EcoEvoConfig{T},
+        invaderPopsize::T,
         covMat::AbstractMatrix{T},
         selectionFunc
     ) where {T<:Real, AuxClasses}
@@ -285,7 +278,7 @@ function generateMutant(
     mutantTrait = parentTrait .+ rand(MvNormal(covMat))
 
     # Create mutant species with invader population size distributed across stage classes
-    mutantPopsizeVec = fill(config.invaderPopsize / nStages, nStages)
+    mutantPopsizeVec = fill(invaderPopsize / nStages, nStages)
     mutantSpecies = Species(mutantPopsizeVec, mutantTrait)
 
     # Create new community with mutant appended
@@ -297,61 +290,61 @@ end
 # User-facing methods with uniform random selection
 
 """
-    generateMutant(community::Community{T, AuxClasses}, config::EcoEvoConfig{T}, covMat::AbstractMatrix{T}) where {T, AuxClasses}
+    generateMutant(community::Community{T, AuxClasses}, invaderPopsize::T, covMat::AbstractMatrix{T}) where {T, AuxClasses}
 
 Generate a mutant with uniform random parent selection (full covariance matrix).
 """
 generateMutant(
     community::Community{T, AuxClasses},
-    config::EcoEvoConfig{T},
+    invaderPopsize::T,
     covMat::AbstractMatrix{T}
-) where {T<:Real, AuxClasses} = generateMutant(community, config, covMat, randomSpecies)
+) where {T<:Real, AuxClasses} = generateMutant(community, invaderPopsize, covMat, randomSpecies)
 
 
 """
-    generateMutant(community::Community{T, AuxClasses}, config::EcoEvoConfig{T}, variance::T) where {T, AuxClasses}
+    generateMutant(community::Community{T, AuxClasses}, invaderPopsize::T, variance::T) where {T, AuxClasses}
 
 Generate a mutant with uniform random parent selection (diagonal covariance).
 """
 function generateMutant(
         community::Community{T, AuxClasses},
-        config::EcoEvoConfig{T},
+        invaderPopsize::T,
         variance::T
     ) where {T<:Real, AuxClasses}
     variance > 0 || throw(ArgumentError("variance must be positive"))
     covMat = Matrix{T}(variance * I(traitSpaceDim(community)))
-    generateMutant(community, config, covMat, randomSpecies)
+    generateMutant(community, invaderPopsize, covMat, randomSpecies)
 end
 
 
 # User-facing methods with population-weighted random selection
 
 """
-    generateMutantWeighted(community::Community{T, AuxClasses}, config::EcoEvoConfig{T}, covMat::AbstractMatrix{T}) where {T, AuxClasses}
+    generateMutantWeighted(community::Community{T, AuxClasses}, invaderPopsize::T, covMat::AbstractMatrix{T}) where {T, AuxClasses}
 
 Generate a mutant with population-weighted parent selection (full covariance matrix).
 """
 generateMutantWeighted(
     community::Community{T, AuxClasses},
-    config::EcoEvoConfig{T},
+    invaderPopsize::T,
     covMat::AbstractMatrix{T}
 ) where {T<:Real, AuxClasses} =
-    generateMutant(community, config, covMat, weightedRandomSpecies)
+    generateMutant(community, invaderPopsize, covMat, weightedRandomSpecies)
 
 
 """
-    generateMutantWeighted(community::Community{T, AuxClasses}, config::EcoEvoConfig{T}, variance::T) where {T, AuxClasses}
+    generateMutantWeighted(community::Community{T, AuxClasses}, invaderPopsize::T, variance::T) where {T, AuxClasses}
 
 Generate a mutant with population-weighted parent selection (diagonal covariance).
 """
 function generateMutantWeighted(
         community::Community{T, AuxClasses},
-        config::EcoEvoConfig{T},
+        invaderPopsize::T,
         variance::T
     ) where {T<:Real, AuxClasses}
     variance > 0 || throw(ArgumentError("variance must be positive"))
     covMat = Matrix{T}(variance * I(traitSpaceDim(community)))
-    generateMutant(community, config, covMat, weightedRandomSpecies)
+    generateMutant(community, invaderPopsize, covMat, weightedRandomSpecies)
 end
 
 
@@ -370,7 +363,7 @@ function singleEvoStep(
     ) where {T<:Real, AuxClasses}
 
     @pipe community |>
-        config.mutationGenerator(_, config) |>
+        config.mutationGenerator(_) |>
         ecoDyn(_, config) |>
         removeExtinct(_, config.extThreshold)
 end

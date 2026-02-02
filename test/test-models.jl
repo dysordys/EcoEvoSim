@@ -131,7 +131,6 @@ using LinearAlgebra
             ecoDyn = ecoDynFactory,
             mutationGenerator = (x) -> x .+ 0.01,
             integrationParams = IntegrationParams(maxTime = 10.0),
-            invaderPopsize = 0.001,
             extThreshold = 0.003
         )
 
@@ -159,12 +158,10 @@ using LinearAlgebra
             ecoDyn = ecoDynFactory,
             mutationGenerator = (x) -> x .+ 0.01,
             integrationParams = IntegrationParams(maxTime = 10.0),
-            invaderPopsize = 0.001,
             extThreshold = 0.003
         )
 
         @test config.ecoDyn === ecoDynFactory
-        @test config.invaderPopsize == 0.001
         @test config.extThreshold == 0.003
     end
 
