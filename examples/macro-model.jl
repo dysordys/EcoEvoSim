@@ -1,16 +1,19 @@
 using EcoEvoSim
 using Plots
 using Random
-using DataFrames
-using CSV
-
 
 
 growthFn(z) = (tanh(sum(z .- 0.5) / 0.2) + 1) / 2 - 0.006692851
-kernelFn(zi, zj) = -(tanh(sum(zi .- zj) / 0.15) + 1) / 2
+kernelFn(zi, zj) = (tanh(sum(zi .- zj) / 0.15) + 1) / 2
+
+# Create the model using the new @unstructuredModel macro
+# Users simply specify what dn[i]/dt is, and the macro handles the rest
+ecology = @unstructuredModel begin
+    dn[i] = n[i] * (growthFn(z[i]) - sum(kernelFn(z[i], z[j]) * n[j] for j in 1:nSpecies))
+end
 
 config = EcoEvoConfig(
-    ecoDyn = lotkaVolterra(growthFn, kernelFn),
+    ecoDyn = ecology,
     mutationGenerator = c -> generateMutant(c; invaderPopsize=0.001, variance=0.002^2),
     integrationParams = IntegrationParams(
         maxTime = 1e12,
@@ -29,6 +32,3 @@ lineage = ecoDyn(lineage, config)
 
 p = plotEvo(lineage)
 # savefig(p, "examples/plot.png")
-
-table = historyToTable(lineage)
-# CSV.write("examples/evo.csv", DataFrame(table))

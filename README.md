@@ -129,7 +129,7 @@ For more details on the implementation and API, see the source files in `src/`:
 - `basic-utils.jl`: Simple utility functions that help work with the system's custom types.
 - `show-methods.jl`: Custom pretty-printing for the system's types.
 - `ecoevo.jl`: Main eco-evolutionary simulation logic.
-- `models.jl`: Predefined ecological models.
+- `models.jl`: Predefined ecological models, plus a syntax for conveniently defining any model.
 - `visualize.jl`: Plotting utilities.
 
 These source files also have corresponding test suites, under `/test`. for example, tests for `ecoevo.jl` are in `/test/test-ecoevo.jl`, and so on. The `runtests.jl` script runs all tests across these test files.

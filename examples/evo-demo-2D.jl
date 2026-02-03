@@ -2,8 +2,8 @@ using EcoEvoSim
 using Plots
 
 
-growthFn = z -> 1.0 - sum(z.^2) / 0.5^2
-kernelFn = (zi, zj) -> -exp(-sum((zi .- zj).^2) / 0.25^2)
+growthFn(z) = 1.0 - sum(z.^2) / 0.5^2
+kernelFn(zi, zj) = -exp(-sum((zi .- zj).^2) / 0.25^2)
 
 config = EcoEvoConfig(
     ecoDyn = lotkaVolterra(growthFn, kernelFn),

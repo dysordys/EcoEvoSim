@@ -6,8 +6,8 @@ using Random
 using DifferentialEquations
 
 
-growthFn = (z) -> (tanh(sum(z .- 0.5) / 0.2) + 1) / 2 - 0.006692851
-kernelFn = (zi, zj) -> -(tanh(sum(zi .- zj) / 0.15) + 1) / 2
+growthFn(z) = (tanh(sum(z .- 0.5) / 0.2) + 1) / 2 - 0.006692851
+kernelFn(zi, zj) = -(tanh(sum(zi .- zj) / 0.15) + 1) / 2
 
 config = EcoEvoConfig(
     ecoDyn = lotkaVolterra(growthFn, kernelFn),
