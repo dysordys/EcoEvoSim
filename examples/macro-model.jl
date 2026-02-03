@@ -4,12 +4,12 @@ using Random
 
 
 growthFn(z) = (tanh(sum(z .- 0.5) / 0.2) + 1) / 2 - 0.006692851
-kernelFn(zi, zj) = (tanh(sum(zi .- zj) / 0.15) + 1) / 2
+kernelFn(zi, zj) = -(tanh(sum(zi .- zj) / 0.15) + 1) / 2
 
 # Create the model using the new @unstructuredModel macro
 # Users simply specify what dn[i]/dt is, and the macro handles the rest
 ecology = @unstructuredModel begin
-    dn[i] = n[i] * (growthFn(z[i]) - sum(kernelFn(z[i], z[j]) * n[j] for j in 1:nSpecies))
+    dn[i] = n[i] * (growthFn(z[i]) + sum(kernelFn(z[i], z[j]) * n[j] for j in 1:nSpecies))
 end
 
 config = EcoEvoConfig(
