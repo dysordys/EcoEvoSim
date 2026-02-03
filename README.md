@@ -48,28 +48,27 @@ Here is a simple example demonstrating how to set up and run an evolutionary sim
 using EcoEvoSim
 using Plots
 
-# Define ecological dynamics
-# Quadratic intrinsic growth, with maximum at z = 0 and roots at +/-0.5:
+# Define quadratic intrinsic growth, with maximum at z = 0 and roots at +/-0.5:
 growthFn = z -> 1 - sum(z.^2) / 0.5^2
-# Gaussian interaction kernel with width 0.15:
+# Define a Gaussian interaction kernel with width 0.15:
 kernelFn = (zi, zj) -> -exp(-sum((zi .- zj).^2) / (2 * 0.15^2))
 
 # Configure the simulation
 config = EcoEvoConfig(
-    # Use Lotka-Volterra dynamics, with the specified functions growthFn and kernelFn:
+    # Use Lotka-Volterra dynamics, with the specified ingredient functions above:
     ecoDyn = lotkaVolterra(growthFn, kernelFn),
     # Generate normally distributed mutations with standard deviation 0.002:
-    mutationGenerator = (comm) -> generateMutant(comm, 0.001, 0.002^2),
+    mutationGenerator = c -> generateMutant(c; invaderPopsize=0.001, variance=0.002^2),
     # Integrate each ecological step for 1.0e10 time units:
     integrationParams = IntegrationParams(maxTime = 1.0e10),
     # Species with pop. size below 0.003 after eco. simulation are removed:
     extThreshold = 0.003
 )
 
-# Initialize a community with a single species with density 1 and trait value -0.3:
+# Initialize a community with a single species, with density 1 and trait value -0.3:
 initCommunity = Community([1.0], [-0.3])
 
-# Make sure initial community is at its ecological equilibrium:
+# Make sure the initial community is at its ecological equilibrium:
 initCommunity = ecoDyn(initCommunity, config)
 
 # Run the simulation for 1000 mutation events:
@@ -102,7 +101,7 @@ The `EcoEvoConfig` struct allows one to specify:
 - The functions and equations governing the ecological dynamics.
 - Methods for generating mutant phenotypes.
 - Integration (hyper-)parameters.
-- Invasion and extinction thresholds.
+- The extinction threshold, below which a phenotype is considered extinct.
 
 
 
@@ -110,9 +109,10 @@ The `EcoEvoConfig` struct allows one to specify:
 
 See the `examples/` directory for more detailed demonstrations:
 
-- `evo-demo.jl`: Basic evolutionary simulation.
-- `evo-demo-2D.jl`: Evolution in two-dimensional trait space.
-- `evo-demo-steady.jl`: As `evo-demo.jl`, but explicitly integrating the ecological dynamics until steady state.
+- `evo-demo.jl`: Basic evolutionary simulation using Lotka-Volterra competition.
+- `evo-demo-steady.jl`: As `evo-demo.jl`, but explicitly integrating the ecological dynamics until steady state is reached, instead of integrating for a prescribed number of time units.
+- `evo-demo-2D.jl`: Lotka-Volterra competition in a two-dimensional trait space.
+- `two-patch.jl`: A model with two spatial patches that have different environmental conditions and limited migration in between. Depending on the parameters, either a single generalist prevails or two specialist species emerge.
 
 
 
@@ -120,15 +120,15 @@ See the `examples/` directory for more detailed demonstrations:
 
 For more details on the implementation and API, see the source files in `src/`:
 
-- `basic-types.jl`: Core type definitions
-- `basic-constructors.jl`: Constructor functions
-- `basic-selectors.jl`: Selector functions (one should favor these over explicit field access)
-- `basic-utils.jl`: Simple utility functions that help work with the system's custom types
-- `show-methods.jl`: Custom pretty-printing for the system's types
-- `ecoevo.jl`: Main eco-evolutionary simulation logic
-- `models.jl`: Predefined ecological models
-- `visualize.jl`: Plotting utilities
-- `EcoEvoSim.jl`: The heart of the system where everything is brought together
+- `EcoEvoSim.jl`: The heart of the system where everything is brought together.
+- `basic-types.jl`: Core type definitions.
+- `basic-constructors.jl`: Constructor functions.
+- `basic-selectors.jl`: Selector functions (one should favor these over explicit field access).
+- `basic-utils.jl`: Simple utility functions that help work with the system's custom types.
+- `show-methods.jl`: Custom pretty-printing for the system's types.
+- `ecoevo.jl`: Main eco-evolutionary simulation logic.
+- `models.jl`: Predefined ecological models.
+- `visualize.jl`: Plotting utilities.
 
 These source files also have corresponding test suites, under `/test`. for example, tests for `ecoevo.jl` are in `/test/test-ecoevo.jl`, and so on. The `runtests.jl` script runs all tests across these test files.
 

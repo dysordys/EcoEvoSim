@@ -76,7 +76,7 @@ Configuration for eco-evolutionary simulations.
 ```julia
 config = EcoEvoConfig(
     ecoDyn = lotkaVolterra(growthFn, interactionFn),
-    mutationGenerator = (comm) -> generateMutant(comm, 0.001, 0.01),
+    mutationGenerator = (comm) -> generateMutant(comm; invaderPopsize=0.001, variance=0.01),
     integrationParams = IntegrationParams(maxTime = 50.0),
     extThreshold = 0.003
 )
@@ -291,65 +291,62 @@ end
 # User-facing methods with uniform random selection
 
 """
-    generateMutant(community::Community{T, AuxClasses}, invaderPopsize::T,
-                   covMat::AbstractMatrix{T}) where {T, AuxClasses}
+    generateMutant(community::Community{T, AuxClasses}; invaderPopsize::T,
+                   covMat::AbstractMatrix{T} = nothing, variance::T = nothing) where {T, AuxClasses}
 
-Generate a mutant with uniform random parent selection (full covariance matrix).
-"""
-generateMutant(
-    community::Community{T, AuxClasses},
-    invaderPopsize::T,
-    covMat::AbstractMatrix{T}
-) where {T<:Real, AuxClasses} = generateMutant(community, invaderPopsize, covMat, randomSpecies)
-
-
-"""
-    generateMutant(community::Community{T, AuxClasses}, invaderPopsize::T,
-                   variance::T) where {T, AuxClasses}
-
-Generate a mutant with uniform random parent selection (diagonal covariance).
+Generate a mutant with uniform random parent selection.
+Specify either `covMat` (full covariance matrix) or `variance` (diagonal covariance).
 """
 function generateMutant(
-        community::Community{T, AuxClasses},
-        invaderPopsize::T,
-        variance::T
-    ) where {T<:Real, AuxClasses}
-    variance > 0 || throw(ArgumentError("variance must be positive"))
-    covMat = Matrix{T}(variance * I(traitSpaceDim(community)))
-    generateMutant(community, invaderPopsize, covMat, randomSpecies)
+    community::Community{T, AuxClasses};
+    invaderPopsize::T,
+    covMat::Union{AbstractMatrix{T}, Nothing} = nothing,
+    variance::Union{T, Nothing} = nothing
+) where {T<:Real, AuxClasses}
+    if covMat !== nothing && variance !== nothing
+        throw(ArgumentError("Specify either covMat or variance, not both"))
+    elseif covMat === nothing && variance === nothing
+        throw(ArgumentError("Specify either covMat or variance"))
+    end
+
+    if covMat !== nothing
+        generateMutant(community, invaderPopsize, covMat, randomSpecies)
+    else
+        variance > 0 || throw(ArgumentError("variance must be positive"))
+        covMat_computed = Matrix{T}(variance * I(traitSpaceDim(community)))
+        generateMutant(community, invaderPopsize, covMat_computed, randomSpecies)
+    end
 end
 
 
 # User-facing methods with population-weighted random selection
 
 """
-    generateMutantWeighted(community::Community{T, AuxClasses}, invaderPopsize::T,
-                           covMat::AbstractMatrix{T}) where {T, AuxClasses}
+    generateMutantWeighted(community::Community{T, AuxClasses}; invaderPopsize::T,
+                           covMat::AbstractMatrix{T} = nothing, variance::T = nothing) where {T, AuxClasses}
 
-Generate a mutant with population-weighted parent selection (full covariance matrix).
-"""
-generateMutantWeighted(
-    community::Community{T, AuxClasses},
-    invaderPopsize::T,
-    covMat::AbstractMatrix{T}
-) where {T<:Real, AuxClasses} =
-    generateMutant(community, invaderPopsize, covMat, weightedRandomSpecies)
-
-
-"""
-    generateMutantWeighted(community::Community{T, AuxClasses}, invaderPopsize::T,
-                           variance::T) where {T, AuxClasses}
-
-Generate a mutant with population-weighted parent selection (diagonal covariance).
+Generate a mutant with population-weighted parent selection.
+Specify either `covMat` (full covariance matrix) or `variance` (diagonal covariance).
 """
 function generateMutantWeighted(
-        community::Community{T, AuxClasses},
-        invaderPopsize::T,
-        variance::T
-    ) where {T<:Real, AuxClasses}
-    variance > 0 || throw(ArgumentError("variance must be positive"))
-    covMat = Matrix{T}(variance * I(traitSpaceDim(community)))
-    generateMutant(community, invaderPopsize, covMat, weightedRandomSpecies)
+    community::Community{T, AuxClasses};
+    invaderPopsize::T,
+    covMat::Union{AbstractMatrix{T}, Nothing} = nothing,
+    variance::Union{T, Nothing} = nothing
+) where {T<:Real, AuxClasses}
+    if covMat !== nothing && variance !== nothing
+        throw(ArgumentError("Specify either covMat or variance, not both"))
+    elseif covMat === nothing && variance === nothing
+        throw(ArgumentError("Specify either covMat or variance"))
+    end
+
+    if covMat !== nothing
+        generateMutant(community, invaderPopsize, covMat, weightedRandomSpecies)
+    else
+        variance > 0 || throw(ArgumentError("variance must be positive"))
+        covMat_computed = Matrix{T}(variance * I(traitSpaceDim(community)))
+        generateMutant(community, invaderPopsize, covMat_computed, weightedRandomSpecies)
+    end
 end
 
 
