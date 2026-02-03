@@ -57,11 +57,13 @@ kernelFn = (zi, zj) -> -exp(-sum((zi .- zj).^2) / (2 * 0.15^2))
 config = EcoEvoConfig(
     # Use Lotka-Volterra dynamics, with the specified ingredient functions above:
     ecoDyn = lotkaVolterra(growthFn, kernelFn),
-    # Generate normally distributed mutations with standard deviation 0.002:
+    # This is how new mutants should be generated - a resident is chosen at random,
+    # we add a normally-distributed variate to its trait with mean zero and standard
+    # deviation 0.002, and we initialize the new phenotype with population size 0.001:
     mutationGenerator = c -> generateMutant(c; invaderPopsize=0.001, variance=0.002^2),
-    # Integrate each ecological step for 1.0e10 time units:
-    integrationParams = IntegrationParams(maxTime = 1.0e10),
-    # Species with pop. size below 0.003 after eco. simulation are removed:
+    # Integrate each ecological step for 1e12 time units:
+    integrationParams = IntegrationParams(maxTime = 1.0e12),
+    # Species with pop. size below 0.003 are removed after ecological simulation:
     extThreshold = 0.003
 )
 
