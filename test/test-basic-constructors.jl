@@ -189,9 +189,11 @@ numTests = 50
                 @test sp.popsize[1].popsize == [popvals[i]]
                 @test sp.trait[1].trait == [traitvals[i]]
             end
-            @test length(comm.aux) == length(auxvals)
-            for (a,v) in zip(comm.aux, auxvals)
-                @test a.popsize[1] == v
+            if isempty(auxvals)
+                @test length(comm.aux) == 0
+            else
+                @test length(comm.aux) == 1  # Single structured auxiliary variable
+                @test comm.aux[1].popsize == auxvals
             end
         end
 
@@ -268,15 +270,19 @@ numTests = 50
 
             comm = Community(popMat, traitVec, auxvals)
             @test length(comm.species) == numSpecies
-            @test length(comm.aux) == length(auxvals)
+            if isempty(auxvals)
+                @test length(comm.aux) == 0
+            else
+                @test length(comm.aux) == 1  # Single structured auxiliary variable
+            end
             for (i, sp) in enumerate(comm.species)
                 @test length(sp.popsize) == 1
                 @test sp.popsize[1].popsize == vec(popMat[i, :])
                 @test length(sp.trait) == 1
                 @test sp.trait[1].trait == [traitVec[i]]
             end
-            for (a, v) in zip(comm.aux, auxvals)
-                @test a.popsize[1] == v
+            if !isempty(auxvals)
+                @test comm.aux[1].popsize == auxvals
             end
         end
 
@@ -318,15 +324,19 @@ numTests = 50
 
             comm = Community(popVec, traitMat, auxvals)
             @test length(comm.species) == numSpecies
-            @test length(comm.aux) == length(auxvals)
+            if isempty(auxvals)
+                @test length(comm.aux) == 0
+            else
+                @test length(comm.aux) == 1  # Single structured auxiliary variable
+            end
             for (i, sp) in enumerate(comm.species)
                 @test length(sp.popsize) == 1
                 @test sp.popsize[1].popsize == [popVec[i]]
                 @test length(sp.trait) == 1
                 @test sp.trait[1].trait == vec(traitMat[i, :])
             end
-            for (a, v) in zip(comm.aux, auxvals)
-                @test a.popsize[1] == v
+            if !isempty(auxvals)
+                @test comm.aux[1].popsize == auxvals
             end
         end
 
@@ -370,15 +380,19 @@ numTests = 50
 
             comm = Community(popMat, traitMat, auxvals)
             @test length(comm.species) == numSpecies
-            @test length(comm.aux) == length(auxvals)
+            if isempty(auxvals)
+                @test length(comm.aux) == 0
+            else
+                @test length(comm.aux) == 1  # Single structured auxiliary variable
+            end
             for (i, sp) in enumerate(comm.species)
                 @test length(sp.popsize) == 1
                 @test sp.popsize[1].popsize == vec(popMat[i, :])
                 @test length(sp.trait) == 1
                 @test sp.trait[1].trait == vec(traitMat[i, :])
             end
-            for (a, v) in zip(comm.aux, auxvals)
-                @test a.popsize[1] == v
+            if !isempty(auxvals)
+                @test comm.aux[1].popsize == auxvals
             end
         end
 

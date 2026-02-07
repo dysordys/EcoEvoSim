@@ -135,7 +135,7 @@ function Community(
         [PopulationSize{T}([popVals[i]])],
         [Phenotype{T}([traitVals[i]])]
     ) for i in eachindex(popVals)]
-    aux = [PopulationSize{T}([a]) for a in auxVals]
+    aux = isempty(auxVals) ? PopulationSize{T}[] : [PopulationSize{T}(auxVals)]
     AuxClasses = length(aux)
     Community{T, AuxClasses}(
         species, aux, zero(T)
@@ -176,7 +176,7 @@ function Community(
         [PopulationSize{T}(Vector{T}(popMat[i, :]))],
         [Phenotype{T}([traitVec[i]])]
     ) for i in 1:n_species]
-    aux = [PopulationSize{T}([a]) for a in auxVals]
+    aux = isempty(auxVals) ? PopulationSize{T}[] : [PopulationSize{T}(auxVals)]
     AuxClasses = length(aux)
     Community{T, AuxClasses}(species, aux, zero(T))
 end
@@ -215,7 +215,7 @@ function Community(
         [PopulationSize{T}([popVec[i]])],
         [Phenotype{T}(Vector{T}(traitMat[i, :]))]
     ) for i in 1:n_species]
-    aux = [PopulationSize{T}([a]) for a in auxVals]
+    aux = isempty(auxVals) ? PopulationSize{T}[] : [PopulationSize{T}(auxVals)]
     AuxClasses = length(aux)
     Community{T, AuxClasses}(species, aux, zero(T))
 end
@@ -252,7 +252,7 @@ function Community(
         [PopulationSize{T}(Vector{T}(popMat[i, :]))],
         [Phenotype{T}(Vector{T}(traitMat[i, :]))]
     ) for i in 1:n_species]
-    aux = [PopulationSize{T}([a]) for a in auxVals]
+    aux = isempty(auxVals) ? PopulationSize{T}[] : [PopulationSize{T}(auxVals)]
     AuxClasses = length(aux)
     Community{T, AuxClasses}(species, aux, zero(T))
 end
