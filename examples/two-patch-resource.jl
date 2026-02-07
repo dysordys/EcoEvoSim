@@ -2,6 +2,7 @@ using EcoEvoSim
 using Plots
 using DifferentialEquations
 using Distributions
+using Random
 
 
 function patchMortality(community, d, theta, sigma, beta, eta, chi)
@@ -24,10 +25,7 @@ end
 
 
 function multipatch(
-        community::Community{T, AuxClasses};
-        d::Float64 = 1.2, mu::Float64 = 0.1,
-        eta::Float64 = 0.5, chi::Float64 = 0.1, gamma::Float64 = 0.05,
-        beta::Float64 = 0.5, theta::Float64 = 0.3, sigma::Float64 = 0.2
+        community::Community{T, AuxClasses}; d, mu, eta, chi, gamma, beta, theta, sigma
     ) where {T<:Real, AuxClasses}
     nSpecies = numSpecies(community)
     mort = patchMortality(community, d, theta, sigma, beta, eta, chi)  # species × patches
@@ -85,9 +83,9 @@ end
 
 
 config = EcoEvoConfig(
-    ecoDyn = (comm::Community) -> multipatch(comm; d = 1.2, mu = 0.1,
-                                eta = 10.0, chi = 1.0, gamma = 10.0,
-                                beta = 0.1, theta = 1.0, sigma = 1.0),
+    ecoDyn = (comm::Community) -> multipatch(comm; d = 1.0, mu = 0.1,
+                                eta = 1.0, chi = 1.0, gamma = 1.0,
+                                beta = 1.0, theta = 1.0, sigma = 1.0),
     mutationGenerator =
         (c::Community) -> generateMutant(c; invaderPopsize=0.001, variance=0.003^2),
     integrationParams = IntegrationParams(
@@ -100,7 +98,8 @@ config = EcoEvoConfig(
 )
 
 
-# Initialize with 2 patches and 2 spatially-structured resource variables (one per patch)
+Random.seed!(54321)
+
 lineage = Community([1.0 1.0;], [-0.2], [1.0, 1.0])
 lineage = ecoDyn(lineage, config)
 @time lineage = evolve!(lineage, config, 1000);

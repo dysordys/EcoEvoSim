@@ -2,6 +2,7 @@ using EcoEvoSim
 using Plots
 using DifferentialEquations
 using Distributions
+using Random
 
 
 function patchGrowth(community, d)
@@ -76,6 +77,8 @@ config = EcoEvoConfig(
     extThreshold = 0.003
 )
 
+
+Random.seed!(54321)
 
 lineage = Community([1.0 1.0;], [-0.2])
 lineage = ecoDyn(lineage, config)
