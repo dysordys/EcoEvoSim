@@ -1,5 +1,6 @@
 using EcoEvoSim
 using Plots
+using GLMakie
 
 
 growthFn(z) = 1.0 - sum(z.^2) / 0.5^2
