@@ -1,6 +1,7 @@
 # Visualization functions for eco-evolutionary dynamics
 
 using Plots
+using GLMakie
 
 
 """
@@ -165,11 +166,11 @@ function plotEvo(
         plot_kwargs = merge(plot_kwargs, (title = title,))
     end
 
-    p = scatter(allTraits, allTimes; plot_kwargs...)
+    p = Plots.scatter(allTraits, allTimes; plot_kwargs...)
 
     # Set y-axis to show mutation steps with nice round intervals
     tick_step = niceTickInterval(nSteps)
-    plot!(p, yticks = 0:tick_step:nSteps)
+    Plots.plot!(p, yticks = 0:tick_step:nSteps)
 
     return p
 end
@@ -289,11 +290,80 @@ function plotEvoTwoTrait(
         plot_kwargs = merge(plot_kwargs, (title = title,))
     end
 
-    p = scatter(allTrait1, allTrait2, allTimes; plot_kwargs...)
+    p = Plots.scatter(allTrait1, allTrait2, allTimes; plot_kwargs...)
 
     # Set z-axis to show mutation steps with nice round intervals
     tick_step = niceTickInterval(nSteps)
-    plot!(p, zticks = 0:tick_step:nSteps)
+    Plots.plot!(p, zticks = 0:tick_step:nSteps)
 
     return p
+end
+
+
+function plotEvoTwoTraitInteractive(
+        history::EvoHistory{T, AuxClasses};
+        colormap = cgrad([:lightgray, :navy]),
+        markersize::Real = 8.0,
+        xlabel::String = "Trait 1",
+        ylabel::String = "Trait 2",
+        zlabel::String = "Mutation event"
+    ) where {T<:Real, AuxClasses}
+
+    # Validation
+    if length(history.history) > 0
+        traitDim = traitSpaceDim(history.history[1])
+        traitDim == 2 || throw(ArgumentError(
+            "Function only works for 2-dimensional trait spaces (got dimension $traitDim)"
+        ))
+    else
+        throw(ArgumentError("Cannot plot empty evolutionary history"))
+    end
+
+    # Extract data
+    nSteps = length(history.history)
+    allTrait1 = T[]
+    allTrait2 = T[]
+    allPopsizes = T[]
+    allTimes = Int[]
+
+    for (step, comm) in enumerate(history.history)
+        for sp_idx in 1:numSpecies(comm)
+            traitsVec = traits(comm, sp_idx)
+            push!(allTrait1, traitsVec[1])
+            push!(allTrait2, traitsVec[2])
+            pop_val = sum(popsizes(comm, sp_idx))
+            push!(allPopsizes, pop_val)
+            push!(allTimes, step)
+        end
+    end
+
+    if length(allPopsizes) == 0
+        throw(ArgumentError("No species found in evolutionary history"))
+    end
+
+    # Normalize population sizes for coloring
+    pop_min, pop_max = extrema(allPopsizes)
+    normalized_sizes = (allPopsizes .- pop_min) ./ (pop_max - pop_min)
+
+    # Create figure and axis
+    fig = Figure(size = (1000, 800))
+    ax = Axis3(fig[1, 1];
+        xlabel = xlabel,
+        ylabel = ylabel,
+        zlabel = zlabel
+    )
+
+    # Create scatter plot
+    Makie.scatter!(ax, allTrait1, allTrait2, allTimes;
+        color = normalized_sizes,
+        colormap = colormap,
+        markersize = markersize,
+        alpha = 0.8
+    )
+
+    # Add colorbar
+    Colorbar(fig[1, 2]; limits = (pop_min, pop_max), colormap = colormap,
+        label = "Population size")
+
+    return fig
 end
