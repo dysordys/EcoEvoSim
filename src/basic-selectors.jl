@@ -412,3 +412,60 @@ function weightedRandomSpecies(comm::Community)
     # Fallback (should never reach here due to numerical precision)
     return numSp
 end
+
+
+# Functions for extracting snapshots from evolutionary history
+
+"""
+    historyList(h::EvoHistory)
+    historyList(h::EvoHistory, i::Integer)
+    historyList(h::EvoHistory, indices)
+
+Extract community snapshots from an evolutionary history.
+
+# Arguments
+- `h::EvoHistory`: The evolutionary history
+- `i::Integer`: Single snapshot index (optional)
+- `indices`: Collection of snapshot indices (optional)
+
+# Returns
+- Without index: Vector of all communities in the history
+- With single index: Single community at that snapshot
+- With multiple indices: Vector of communities at specified snapshots
+
+# Example
+```julia
+# Get all snapshots
+all_communities = historyList(history)
+
+# Get a single snapshot
+comm = historyList(history, 5)
+
+# Get multiple snapshots
+subset = historyList(history, [1, 3, 5])
+```
+"""
+historyList(h::EvoHistory) = h.history
+
+
+function historyList(h::EvoHistory, i::Integer)
+    n = length(historyList(h))
+    1 <= i <= n || throw(ArgumentError(
+        "Snapshot index $i out of bounds (history has $n snapshots)"
+    ))
+    historyList(h)[i]
+end
+
+
+function historyList(h::EvoHistory, indices)
+    hist = historyList(h)
+    n = length(hist)
+    result = eltype(hist)[]
+    for i in indices
+        1 <= i <= n || throw(ArgumentError(
+            "Snapshot index $i out of bounds (history has $n snapshots)"
+        ))
+        push!(result, hist[i])
+    end
+    return result
+end

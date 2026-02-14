@@ -740,4 +740,215 @@ numTests = 50
         @test table["popsize_1"][3] == 1.5
     end
 
+
+    @testset "testing_filterHistory_predicate_function" begin
+        for _ in 1:numTests
+            T = Float64
+            n = rand(5:20)
+            communities = Community{T, 0}[]
+            for i in 1:n
+                sp = Species(PopulationSize(T(i)), Phenotype(T(i)))
+                push!(communities, Community([sp], PopulationSize{T}[], T(i)))
+            end
+            history = EvoHistory(communities)
+
+            # Test filtering for first half
+            filtered = filterHistory(history, i -> i <= div(n, 2))
+            @test length(filtered) == div(n, 2)
+            for i in 1:div(n, 2)
+                @test historyList(filtered, i).time == T(i)
+            end
+
+            # Test filtering for indices matching a pattern
+            filtered_odd = filterHistory(history, i -> isodd(i))
+            @test length(filtered_odd) == ceil(Int, n / 2)
+            for (idx, i) in enumerate(1:2:n)
+                @test historyList(filtered_odd, idx).time == T(i)
+            end
+
+            # Test filtering for last k snapshots
+            k = rand(1:div(n, 2))
+            filtered_last = filterHistory(history, i -> i > n - k)
+            @test length(filtered_last) == k
+            for (idx, i) in enumerate(n-k+1:n)
+                @test historyList(filtered_last, idx).time == T(i)
+            end
+        end
+    end
+
+
+    @testset "testing_filterHistory_index_vector" begin
+        for _ in 1:numTests
+            T = Float64
+            n = rand(10:20)
+            communities = Community{T, 0}[]
+            for i in 1:n
+                sp = Species(PopulationSize(T(i)), Phenotype(T(i)))
+                push!(communities, Community([sp], PopulationSize{T}[], T(i)))
+            end
+            history = EvoHistory(communities)
+
+            # Test selecting specific indices
+            indices = sort(unique(rand(1:n, rand(3:min(n, 8)))))
+            filtered = filterHistory(history, indices)
+            @test length(filtered) == length(indices)
+            for (idx, i) in enumerate(indices)
+                @test historyList(filtered, idx).time == T(i)
+            end
+
+            # Test selecting a single index
+            single_idx = rand(1:n)
+            filtered_single = filterHistory(history, [single_idx])
+            @test length(filtered_single) == 1
+            @test historyList(filtered_single, 1).time == T(single_idx)
+
+            # Test that order is preserved
+            selected_indices = [n, 1, div(n, 2), n - 1]
+            filtered_ordered = filterHistory(history, selected_indices)
+            @test length(filtered_ordered) == length(selected_indices)
+            for (idx, i) in enumerate(selected_indices)
+                @test historyList(filtered_ordered, idx).time == T(i)
+            end
+        end
+    end
+
+
+    @testset "testing_filterHistory_range" begin
+        for _ in 1:numTests
+            T = Float64
+            n = rand(10:20)
+            communities = Community{T, 0}[]
+            for i in 1:n
+                sp = Species(PopulationSize(T(i)), Phenotype(T(i)))
+                push!(communities, Community([sp], PopulationSize{T}[], T(i)))
+            end
+            history = EvoHistory(communities)
+
+            # Test selecting a contiguous range
+            start = rand(1:div(n, 2))
+            stop = rand(start:n)
+            filtered = filterHistory(history, start:stop)
+            @test length(filtered) == stop - start + 1
+            for (idx, i) in enumerate(start:stop)
+                @test historyList(filtered, idx).time == T(i)
+            end
+
+            # Test selecting all (1:n)
+            filtered_all = filterHistory(history, 1:n)
+            @test length(filtered_all) == n
+            for i in 1:n
+                @test historyList(filtered_all, i).time == T(i)
+            end
+
+            # Test single-element range
+            single = rand(1:n)
+            filtered_single = filterHistory(history, single:single)
+            @test length(filtered_single) == 1
+            @test historyList(filtered_single, 1).time == T(single)
+        end
+    end
+
+
+    @testset "testing_filterHistory_stride" begin
+        for _ in 1:numTests
+            T = Float64
+            n = rand(10:30)
+            communities = Community{T, 0}[]
+            for i in 1:n
+                sp = Species(PopulationSize(T(i)), Phenotype(T(i)))
+                push!(communities, Community([sp], PopulationSize{T}[], T(i)))
+            end
+            history = EvoHistory(communities)
+
+            # Test stride of 1 (should return all)
+            filtered_stride1 = filterHistory(history, 1)
+            @test length(filtered_stride1) == n
+            for i in 1:n
+                @test historyList(filtered_stride1, i).time == T(i)
+            end
+
+            # Test stride of 2 (every other)
+            filtered_stride2 = filterHistory(history, 2)
+            expected_length = ceil(Int, n / 2)
+            @test length(filtered_stride2) == expected_length
+            for (idx, i) in enumerate(1:2:n)
+                @test historyList(filtered_stride2, idx).time == T(i)
+            end
+
+            # Test stride larger than history
+            large_stride = n + 5
+            filtered_large_stride = filterHistory(history, large_stride)
+            @test length(filtered_large_stride) == 1
+            @test historyList(filtered_large_stride, 1).time == T(1)
+
+            # Test with various strides
+            for stride in 3:min(n, 10)
+                filtered = filterHistory(history, stride)
+                expected = collect(1:stride:n)
+                @test length(filtered) == length(expected)
+                for (idx, i) in enumerate(expected)
+                    @test historyList(filtered, idx).time == T(i)
+                end
+            end
+        end
+    end
+
+
+    @testset "testing_filterHistory_error_handling" begin
+        T = Float64
+        n = rand(5:10)
+        communities = Community{T, 0}[]
+        for i in 1:n
+            sp = Species(PopulationSize(T(i)), Phenotype(T(i)))
+            push!(communities, Community([sp], PopulationSize{T}[], T(i)))
+        end
+        history = EvoHistory(communities)
+
+        # Test out-of-bounds indices with vector
+        @test_throws ArgumentError filterHistory(history, [0])
+        @test_throws ArgumentError filterHistory(history, [n + 1])
+        @test_throws ArgumentError filterHistory(history, [1, n + 1])
+
+        # Test out-of-bounds range
+        @test_throws ArgumentError filterHistory(history, 0:5)
+        @test_throws ArgumentError filterHistory(history, 1:n+1)
+        @test_throws ArgumentError filterHistory(history, -1:5)
+
+        # Test invalid stride
+        @test_throws ArgumentError filterHistory(history, 0)
+        @test_throws ArgumentError filterHistory(history, -1)
+
+        # Test predicate that selects nothing
+        @test_throws ArgumentError filterHistory(history, i -> false)
+    end
+
+
+    @testset "testing_filterHistory_preserves_community_content" begin
+        for _ in 1:numTests
+            T = Float64
+            n = rand(5:15)
+            # Create communities with varying numbers of species
+            communities = Community{T, 0}[]
+            for i in 1:n
+                num_sp = rand(1:5)
+                sps = [Species(PopulationSize(T(i + j)), Phenotype(T(i - j)))
+                       for j in 1:num_sp]
+                push!(communities, Community(sps, PopulationSize{T}[], T(i)))
+            end
+            history = EvoHistory(communities)
+
+            # Filter and check community content is unchanged
+            indices = [1, div(n, 2), n]
+            filtered = filterHistory(history, indices)
+
+            for (idx, orig_idx) in enumerate(indices)
+                orig_comm = historyList(history, orig_idx)
+                filtered_comm = historyList(filtered, idx)
+                @test numSpecies(filtered_comm) == numSpecies(orig_comm)
+                @test speciesList(filtered_comm) == speciesList(orig_comm)
+                @test filtered_comm.time == orig_comm.time
+            end
+        end
+    end
+
 end

@@ -17,7 +17,154 @@ Number of time points (communities) in the history
 n = length(history)  # Number of snapshots in history
 ```
 """
-Base.length(h::EvoHistory) = length(h.history)
+Base.length(h::EvoHistory) = length(historyList(h))
+
+
+
+# Filter evolutionary histories
+
+"""
+    filterHistory(h::EvoHistory, f::Function)
+
+Filter an evolutionary history by applying a predicate function to each snapshot index.
+
+The predicate function should take a single integer argument (the 1-based snapshot index)
+and return `true` if that snapshot should be kept, `false` otherwise.
+
+# Arguments
+- `h::EvoHistory`: The evolutionary history to filter
+- `f::Function`: A function that takes an integer index and returns a boolean
+
+# Returns
+New `EvoHistory` containing only the snapshots where `f(i)` returns `true`
+
+# Example
+```julia
+# Keep only snapshots at indices 1, 5, 10, and 15
+filtered = filterHistory(history, i -> i in [1, 5, 10, 15])
+
+# Keep every other snapshot starting from the first
+filtered = filterHistory(history, i -> isodd(i))
+
+# Keep the last 50 snapshots
+n = length(history)
+filtered = filterHistory(history, i -> i > n - 50)
+```
+"""
+function filterHistory(h::EvoHistory{T, AuxClasses}, f::Function) where {T<:Real, AuxClasses}
+    n = length(h)
+    selected_indices = [i for i in 1:n if f(i)]
+
+    if length(selected_indices) == 0
+        throw(ArgumentError("Filter function selected no snapshots"))
+    end
+
+    filtered_communities = historyList(h, selected_indices)
+    EvoHistory{T, AuxClasses}(filtered_communities)
+end
+
+
+"""
+    filterHistory(h::EvoHistory, indices::AbstractVector{<:Integer})
+
+Filter an evolutionary history by selecting specific snapshot indices.
+
+# Arguments
+- `h::EvoHistory`: The evolutionary history to filter
+- `indices::AbstractVector{<:Integer}`: Vector of 1-based indices to keep
+
+# Returns
+New `EvoHistory` containing only the specified snapshots in the given order
+
+# Example
+```julia
+# Keep only the first, fifth, and tenth snapshots
+filtered = filterHistory(history, [1, 5, 10])
+
+# Keep the first 100 snapshots
+filtered = filterHistory(history, 1:100)
+```
+"""
+function filterHistory(h::EvoHistory{T, AuxClasses}, indices::AbstractVector{<:Integer}) where {T<:Real, AuxClasses}
+    n = length(h)
+    for i in indices
+        1 <= i <= n || throw(ArgumentError(
+            "Index $i out of bounds (history has $n snapshots)"
+        ))
+    end
+
+    filtered_communities = historyList(h, indices)
+    EvoHistory{T, AuxClasses}(filtered_communities)
+end
+
+
+"""
+    filterHistory(h::EvoHistory, range::UnitRange)
+
+Filter an evolutionary history by selecting a contiguous range of snapshots.
+
+# Arguments
+- `h::EvoHistory`: The evolutionary history to filter
+- `range::UnitRange`: A range of 1-based indices (e.g., `10:50`)
+
+# Returns
+New `EvoHistory` containing only the snapshots in the specified range
+
+# Example
+```julia
+# Keep snapshots from index 10 to 50
+filtered = filterHistory(history, 10:50)
+
+# Keep the first 100 snapshots (equivalent to history[1:100])
+filtered = filterHistory(history, 1:100)
+```
+"""
+function filterHistory(h::EvoHistory{T, AuxClasses}, range::UnitRange{<:Integer}) where {T<:Real, AuxClasses}
+    n = length(h)
+    first(range) >= 1 || throw(ArgumentError(
+        "Range start $(first(range)) is less than 1"
+    ))
+    last(range) <= n || throw(ArgumentError(
+        "Range end $(last(range)) exceeds history length $n"
+    ))
+
+    filtered_communities = historyList(h, range)
+    EvoHistory{T, AuxClasses}(filtered_communities)
+end
+
+
+"""
+    filterHistory(h::EvoHistory, step::Integer)
+
+Filter an evolutionary history by keeping every `step`-th snapshot.
+
+# Arguments
+- `h::EvoHistory`: The evolutionary history to filter
+- `step::Integer`: Keep every step-th snapshot (step >= 1)
+
+# Returns
+New `EvoHistory` containing every step-th snapshot starting from the first
+
+# Example
+```julia
+# Keep every other snapshot
+filtered = filterHistory(history, 2)
+
+# Keep every 10th snapshot
+filtered = filterHistory(history, 10)
+
+# Keep only the first snapshot (step = n where n >= length(history))
+filtered = filterHistory(history, length(history))
+```
+"""
+function filterHistory(h::EvoHistory{T, AuxClasses}, step::Integer) where {T<:Real, AuxClasses}
+    step >= 1 || throw(ArgumentError("step must be >= 1, got $step"))
+
+    n = length(h)
+    selected_indices = 1:step:n
+    filtered_communities = historyList(h, selected_indices)
+    EvoHistory{T, AuxClasses}(filtered_communities)
+end
 
 
 
@@ -586,12 +733,12 @@ CSV.write("evolution.csv", df)
 ```
 """
 function historyToTable(history::EvoHistory{T, AuxClasses}) where {T<:Real, AuxClasses}
-    nSteps = length(history.history)
+    nSteps = length(history)
     nSteps > 0 || throw(ArgumentError("Cannot convert empty history to table"))
 
     # Determine maximum dimensions and count total rows
-    dims = _getMaxDimensions(history.history)
-    nRows = sum(numSpecies(comm) for comm in history.history)
+    dims = _getMaxDimensions(historyList(history))
+    nRows = sum(numSpecies(comm) for comm in historyList(history))
 
     # Initialize table as an ordered dictionary of vectors to preserve column order
     table = OrderedDict{String, Vector{Union{T, Missing, Int}}}()
@@ -620,7 +767,7 @@ function historyToTable(history::EvoHistory{T, AuxClasses}) where {T<:Real, AuxC
 
     # Fill in the data row by row
     rowIdx = 1
-    for (mutEvent, comm) in enumerate(history.history)
+    for (mutEvent, comm) in enumerate(historyList(history))
         nSpecies = numSpecies(comm)
         for sp in 1:nSpecies
             # Basic info

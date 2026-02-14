@@ -15,9 +15,10 @@ config = EcoEvoConfig(
 
 lineage = Community([Species(1.0, [0.3, -0.3])], PopulationSize{Float64}[], 0.0)
 lineage = ecoDyn(lineage, config)
-lineage = evolve!(lineage, config, 30000)
+@time lineage = evolve!(lineage, config, 10000);
 
 plotEvo(lineage) # Shorthand for the one below; they should yield identical plots
 plotEvo(lineage, traitDim=1) # Should be indentical to the one above
 plotEvo(lineage, traitDim=2)
 plotEvoTwoTrait(lineage, camera=(60, 25))
+plotEvoTwoTraitInteractive(lineage)
