@@ -5,6 +5,7 @@ using Distributions
 using LinearAlgebra
 using DifferentialEquations
 using Plots
+using GLMakie
 using OrderedCollections
 
 
@@ -16,6 +17,7 @@ include("basic-utils.jl")
 include("ecoevo.jl")
 include("models.jl")
 include("visualize.jl")
+include("visualize-interactive.jl")
 
 
 export PopulationSize, Phenotype, Species, Community, EvoHistory,
@@ -24,11 +26,13 @@ export PopulationSize, Phenotype, Species, Community, EvoHistory,
        speciesBelowThreshold, removeExtinct, traitSpaceDim, numStages, addSpecies,
        removeSpecies, changePopsizes, changeTraits, orderByTrait, selectTraitDim,
        emptyCommunity, emptyEvoHistory, IntegrationParams, EcoEvoConfig,
-       generateMutant, generateMutantWeighted, ecoDyn, singleEvoStep,
-       evolve!, evolve, unpackCommunity, packCommunity, lotkaVolterra, plotEvo,
-       plotEvoTwoTrait, plotEvoTwoTraitInteractive, niceTickInterval, historyToTable,
-       historyList, filterHistory,
+       generateMutant, generateMutantWeighted, generateMutantSpatial,
+       generateMutantSpatialWeighted, ecoDyn, singleEvoStep,
+       evolve!, evolve, unpackCommunity, packCommunity, lotkaVolterra,
+       plotEvo, plotEvoTwoTrait, plotEvoTwoTraitInteractive,
+       niceTickInterval, historyToTable, historyList, filterHistory,
        @unstructuredModel
 
 
 end # module EcoEvoSim
+

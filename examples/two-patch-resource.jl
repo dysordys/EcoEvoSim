@@ -87,7 +87,7 @@ config = EcoEvoConfig(
                                 eta = 1.0, chi = 1.0, gamma = 1.0,
                                 beta = 1.0, theta = 1.0, sigma = 1.0),
     mutationGenerator =
-        (c::Community) -> generateMutant(c; invaderPopsize=0.001, variance=0.003^2),
+        c -> generateMutantSpatial(c; invaderPopsize=0.001, variance=0.003^2),
     integrationParams = IntegrationParams(
         maxTime = Inf,
         algorithm = DynamicSS(),

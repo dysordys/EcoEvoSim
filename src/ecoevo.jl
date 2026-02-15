@@ -350,6 +350,182 @@ function generateMutantWeighted(
 end
 
 
+# Spatial mutant generation - for populations with explicit spatial structure
+
+"""
+    generateMutantSpatial(community::Community{T, AuxClasses}, invaderPopsize::T,
+                          covMat::AbstractMatrix{T}, selectionFunc) where {T, AuxClasses}
+
+Generate a mutant for spatially-structured populations by placing it in a single patch.
+
+For populations where each stage class represents a spatial patch, this function:
+- Selects a parent species using the provided selection function
+- Creates a mutant with trait = parent trait + random variate from Normal(0, covMat)
+- Places the entire invader population in a single patch, chosen probabilistically based
+  on the relative population size in each patch across all species
+- Returns a new community with the mutant appended to the species list
+
+# Arguments
+- `community::Community{T}`: The current community
+- `invaderPopsize::T`: Total population size of the invader
+- `covMat::AbstractMatrix{T}`: Covariance matrix for trait mutations
+- `selectionFunc`: Function selecting a parent species (e.g., `randomSpecies`, `weightedRandomSpecies`)
+"""
+function generateMutantSpatial(
+        community::Community{T, AuxClasses},
+        invaderPopsize::T,
+        covMat::AbstractMatrix{T},
+        selectionFunc
+    ) where {T<:Real, AuxClasses}
+    # Validate covariance matrix
+    traitDim = traitSpaceDim(community)
+    size(covMat) == (traitDim, traitDim) || throw(ArgumentError(
+        "covMat must be $traitDim × $traitDim to match trait space dimension"
+    ))
+
+    # Select parent species using provided selection function
+    parentIdx = selectionFunc(community)
+    parentTrait = traits(community, parentIdx)
+
+    # Get number of patches (stage classes)
+    nPatches = numStages(community)
+
+    # Calculate total population in each patch across all species
+    # This is used to determine probability of mutant appearing in each patch
+    patchPopulations = zeros(T, nPatches)
+    for sp in speciesList(community)
+        patchPopulations .+= sp.popsize[1].popsize
+    end
+
+    # Check that at least one patch has positive population
+    totalPopulation = sum(patchPopulations)
+    totalPopulation > 0.0 || throw(ArgumentError(
+        "All patches have zero population size; cannot place mutant"
+    ))
+
+    # Select the patch where the mutant will appear using cumulative distribution
+    r = rand() * totalPopulation
+    cumsum = zero(T)
+    selectedPatch = 1  # Default fallback
+    for p in 1:nPatches
+        cumsum += patchPopulations[p]
+        if r <= cumsum
+            selectedPatch = p
+            break
+        end
+    end
+
+    # Generate mutant trait: parent + multivariate normal
+    mutantTrait = parentTrait .+ rand(MvNormal(covMat))
+
+    # Create mutant species with all population in the selected patch
+    mutantPopsizeVec = zeros(T, nPatches)
+    mutantPopsizeVec[selectedPatch] = invaderPopsize
+    mutantSpecies = Species(mutantPopsizeVec, mutantTrait)
+
+    # Create new community with mutant appended
+    newSpeciesList = vcat(speciesList(community), mutantSpecies)
+    Community(newSpeciesList, community.aux, community.time)
+end
+
+
+"""
+    generateMutantSpatial(community::Community{T, AuxClasses}; invaderPopsize::T,
+                          covMat::AbstractMatrix{T} = nothing, variance::T = nothing) where {T, AuxClasses}
+
+Generate a spatially-localized mutant with uniform random parent selection.
+The mutant appears in a single patch, chosen probabilistically based on patch population sizes.
+
+Specify either `covMat` (full covariance matrix) or `variance` (diagonal covariance).
+
+# Arguments
+- `community::Community{T}`: The current community
+- `invaderPopsize::T`: Total population size of the invader
+- `covMat::AbstractMatrix{T}`: Full covariance matrix for trait mutations (optional)
+- `variance::T`: Variance for diagonal covariance matrix (optional)
+
+# Example
+```julia
+# Create a spatially-structured community (2 patches, 1 species with density in each)
+comm = Community([1.0, 1.0], [0.0])
+
+# Generate a mutant that will appear in one patch based on population distribution
+mutant_comm = generateMutantSpatial(comm; invaderPopsize=0.001, variance=0.01^2)
+```
+"""
+function generateMutantSpatial(
+    community::Community{T, AuxClasses};
+    invaderPopsize::T,
+    covMat::Union{AbstractMatrix{T}, Nothing} = nothing,
+    variance::Union{T, Nothing} = nothing
+) where {T<:Real, AuxClasses}
+    if covMat !== nothing && variance !== nothing
+        throw(ArgumentError("Specify either covMat or variance, not both"))
+    elseif covMat === nothing && variance === nothing
+        throw(ArgumentError("Specify either covMat or variance"))
+    end
+
+    if covMat !== nothing
+        generateMutantSpatial(community, invaderPopsize, covMat, randomSpecies)
+    else
+        variance > 0 || throw(ArgumentError("variance must be positive"))
+        covMat_computed = Matrix{T}(variance * I(traitSpaceDim(community)))
+        generateMutantSpatial(community, invaderPopsize, covMat_computed, randomSpecies)
+    end
+end
+
+
+# Population-weighted spatial mutant generation
+
+"""
+    generateMutantSpatialWeighted(community::Community{T, AuxClasses}; invaderPopsize::T,
+                                  covMat::AbstractMatrix{T} = nothing, variance::T = nothing) where {T, AuxClasses}
+
+Generate a spatially-localized mutant with population-weighted parent selection.
+
+Combines two features:
+- Parent species is selected with probability proportional to its total population size
+- The mutant appears in a single patch, chosen probabilistically based on patch population sizes
+
+Specify either `covMat` (full covariance matrix) or `variance` (diagonal covariance).
+
+# Arguments
+- `community::Community{T}`: The current community
+- `invaderPopsize::T`: Total population size of the invader
+- `covMat::AbstractMatrix{T}`: Full covariance matrix for trait mutations (optional)
+- `variance::T`: Variance for diagonal covariance matrix (optional)
+
+# Example
+```julia
+# Create a spatially-structured community with unequal species abundances
+comm = Community([[1.0, 1.0], [10.0, 10.0]], [0.0, 0.3])  # 2 species, 2 patches
+
+# Generate a mutant: parent selected by abundance, placed in a single patch
+mutant_comm = generateMutantSpatialWeighted(comm; invaderPopsize=0.001, variance=0.01^2)
+```
+"""
+function generateMutantSpatialWeighted(
+    community::Community{T, AuxClasses};
+    invaderPopsize::T,
+    covMat::Union{AbstractMatrix{T}, Nothing} = nothing,
+    variance::Union{T, Nothing} = nothing
+) where {T<:Real, AuxClasses}
+    if covMat !== nothing && variance !== nothing
+        throw(ArgumentError("Specify either covMat or variance, not both"))
+    elseif covMat === nothing && variance === nothing
+        throw(ArgumentError("Specify either covMat or variance"))
+    end
+
+    if covMat !== nothing
+        generateMutantSpatial(community, invaderPopsize, covMat, weightedRandomSpecies)
+    else
+        variance > 0 || throw(ArgumentError("variance must be positive"))
+        covMat_computed = Matrix{T}(variance * I(traitSpaceDim(community)))
+        generateMutantSpatial(community, invaderPopsize, covMat_computed, weightedRandomSpecies)
+    end
+end
+
+
 """
     singleEvoStep(community::Community{T, AuxClasses},
                   config::EcoEvoConfig{T}) where {T, AuxClasses}

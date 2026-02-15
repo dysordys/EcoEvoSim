@@ -836,3 +836,47 @@ function _getMaxDimensions(communities::Vector{<:Community})
 end
 
 
+# Utility function for axis tick spacing
+
+"""
+    niceTickInterval(maxValue::Real, targetTicks::Int=10)
+
+Calculate a human-readable tick interval for axis labels.
+
+Returns an interval rounded to (1, 2, or 5) × 10^n that produces approximately
+`targetTicks` tick marks between 0 and `maxValue`.
+
+# Arguments
+- `maxValue::Real`: The maximum value on the axis
+- `targetTicks::Int=10`: Approximate number of tick marks desired
+
+# Returns
+- `Int`: A nice round interval for tick marks
+
+# Example
+```julia
+niceTickInterval(1500)  # Returns 200 (gives ticks: 0, 200, 400, ..., 1400, 1600)
+niceTickInterval(95000) # Returns 20000 (gives ticks: 0, 20000, 40000, ..., 80000, 100000)
+```
+"""
+function niceTickInterval(maxValue::Real, targetTicks::Int=6)
+    targetTicks > 0 || throw(ArgumentError("targetTicks must be positive"))
+    maxValue >= 0 || throw(ArgumentError("maxValue must be non-negative"))
+
+    approximate_interval = maxValue / targetTicks
+    magnitude = 10.0 ^ floor(log10(max(approximate_interval, 1)))
+
+    # Choose the nicest multiplier (1, 2, or 5) for this magnitude
+    ratio = approximate_interval / magnitude
+    tick_step = if ratio <= 1.5
+        magnitude
+    elseif ratio <= 3.5
+        2 * magnitude
+    elseif ratio <= 7.5
+        5 * magnitude
+    else
+        10 * magnitude
+    end
+
+    return Int(round(tick_step))
+end
