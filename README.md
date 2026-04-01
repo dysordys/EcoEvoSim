@@ -68,17 +68,11 @@ growthFn(z) = 1 - sum(z.^2) / 0.5^2
 # Define a Gaussian interaction kernel with width 0.15:
 kernelFn(zi, zj) = -exp(-sum((zi .- zj).^2) / (2 * 0.15^2))
 
-# Define the ecological model using unstructuredModel.
-# The do-block receives: i (species index), n (population vector),
-# z (vector of trait vectors), and nSpecies (species count).
-# The body should return dn[i]/dt — just write out the equation:
-ecology = unstructuredModel() do i, n, z, nSpecies
-    n[i] * (growthFn(z[i]) + sum(kernelFn(z[i], z[j]) * n[j] for j in 1:nSpecies))
-end
-
 # Configure the simulation
 config = EcoEvoConfig(
-    ecoDyn = ecology,
+    # Use built-in function `lotkaVolterra` to create Lotka-Volterra dynamics
+    # with specific growth and interaction functions:
+    ecoDyn = lotkaVolterra(growthFn, kernelFn),
     # This is how new mutants should be generated - a resident is chosen at random,
     # we add a normally-distributed variate to its trait with mean zero and standard
     # deviation 0.002, and we initialize the new phenotype with population size 0.001:
@@ -114,7 +108,7 @@ the factory functions required by `EcoEvoConfig.ecoDyn`. You write the equations
 the helpers take care of extracting traits, setting up the ODE state vector, and
 reshaping structured populations.
 
-### `unstructuredModel` — scalar populations
+### `unstructuredModel` -- scalar populations
 
 Use this when each species has a single population size (no spatial or stage structure).
 
@@ -131,27 +125,40 @@ end
 | `z`        | Vector of trait vectors (`z[j]` = traits of species `j`) |
 | `nSpecies` | Total number of species |
 
-The body should return the time derivative $\text{d} n_i / \text{d} t$. External
-parameters are captured via closures as usual.
+The body should return the time derivative $\text{d}n_i/\text{d}t$. External
+parameters are captured via closures as usual. For example, to implement the same
+Lotka-Volterra model as in the example above:
+
+```julia
+ecology = unstructuredModel() do i, n, z, nSpecies
+    n[i] * (growthFn(z[i]) + sum(kernelFn(z[i], z[j]) * n[j] for j in 1:nSpecies))
+end
+```
+
 
 #### Precomputation
 
 If your equation involves trait-dependent quantities (e.g., interaction matrices)
 that are expensive to recompute at every ODE timestep, pass a `precompute` function.
-It runs once per community and its result is available as an extra argument:
+It runs once per community and its result is available as an extra argument `pre`.
+For example, the above version of the Lotka-Volterra model is inefficient, because
+it recomputes the growth rates and interaction coefficients every iteration of the
+integrator, even though they stay constant until the next mutation event and so
+they only need to be computed once. Below is a more efficient way of defining the
+same model, using `precompute`:
 
 ```julia
 ecology = unstructuredModel(
     precompute = (z, nSpecies) -> (
-        b = [r(z[i]) for i in 1:nSpecies],
-        A = [α(z[i], z[j]) for i in 1:nSpecies, j in 1:nSpecies]
+        b = [growthFn(z[i]) for i in 1:nSpecies],
+        A = [kernelFn(z[i], z[j]) for i in 1:nSpecies, j in 1:nSpecies]
     )
 ) do i, n, z, nSpecies, pre
     n[i] * (pre.b[i] + sum(pre.A[i, j] * n[j] for j in 1:nSpecies))
 end
 ```
 
-### `structuredModel` — spatial patches or stage classes
+### `structuredModel` -- spatial patches or stage classes
 
 Use this when populations are structured (e.g., multiple patches or age/stage classes).
 
@@ -181,14 +188,15 @@ and adds `pre` as an extra argument to the equation function, just like for
 
 ### Pre-built model: `lotkaVolterra`
 
-For standard Lotka-Volterra interactions, a convenience factory is also available:
+For standard Lotka-Volterra interactions, a convenience function is also available:
 
 ```julia
 ecology = lotkaVolterra(growthFn, kernelFn)
 ```
 
-where `growthFn(z)` returns the intrinsic growth rate and `kernelFn(z_i, z_j)`
-returns the interaction coefficient.
+where `growthFn(z)` returns the intrinsic growth rate of phenotype `z`, and
+`kernelFn(z_i, z_j)` returns the interaction coefficient between phenotypes `z_i`
+and `z_j`.
 
 
 
@@ -230,16 +238,20 @@ See the `examples/` directory for more detailed demonstrations:
 dynamics until steady state is reached, instead of integrating for a prescribed
 number of time units.
 - `evo-demo-2D.jl`: Lotka-Volterra competition in a two-dimensional trait space.
-- `function-model.jl`: Same as `evo-demo.jl`, but defining the model with
+- `evo-demo-helper-1.jl`: Same as `evo-demo.jl`, but defining the model with
 `unstructuredModel` instead of the pre-built `lotkaVolterra`.
+- `evo-demo-helper-2.jl`: Same as `evo-demo.jl`, but defining the model with
+`unstructuredModel` instead of the pre-built `lotkaVolterra`, and also relying on
+the `precompute` method to make the running of the model more efficient.
 - `two-patch.jl`: A model with two spatial patches that have different environmental
 conditions and limited migration in between. Depending on the parameters, either a
 single generalist prevails or two specialist species emerge.
-- `two-patch-structured.jl`: Same as `two-patch.jl`, but using the `structuredModel`
-helper for a much simpler definition.
-- `two-patch-resource.jl`: Two-patch model with explicit resource dynamics.
-- `two-patch-resource-structured.jl`: Same as `two-patch-resource.jl`, but using
-`structuredModel` with `auxDynamics`.
+- `two-patch-helper.jl`: Same as `two-patch.jl`, but using the `structuredModel`
+helper method for a much simpler definition.
+- `two-patch-resource.jl`: Two-patch model with explicit resource dynamics -- gives
+identical results to the implicit-resource model.
+- `two-patch-resource-helper.jl`: Same as `two-patch-resource.jl`, but using
+the `structuredModel` helper method together with `auxDynamics`.
 
 
 
