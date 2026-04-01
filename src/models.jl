@@ -85,130 +85,173 @@ function lotkaVolterra(growthFn, kernelFn)
 end
 
 
-# User-friendly ecological model specification via real Julia syntax
+# ─── Function-based model helpers ────────────────────────────────────────────
 
 """
-    @unstructuredModel block
+    unstructuredModel(eqn_fn; precompute=nothing)
 
-Create an unstructured ecological model (no population structure) from dynamics equations.
+Create an unstructured ecological model from a per-species growth rate function.
 
-The macro captures equations specifying how populations change over time. Variables are
-indexed by species: `n[i]` for population of species i, `z[i]` for trait of species i.
-Parameters should be passed via closure.
+The user-supplied function `eqn_fn(i, n, z, nSpecies)` should return `dn[i]/dt`
+for species `i`, where:
+- `i::Int`: current species index
+- `n`: population size vector (`n[j]` = population of species `j`)
+- `z`: vector of trait vectors (`z[j]` = trait vector of species `j`)
+- `nSpecies::Int`: total number of species
 
-# Arguments
-- `block`: A `begin...end` block (or single expression) containing one assignment:
-  - `dn[i] = <expression>`: The per-capita growth rate expression for species i
+# Keyword Arguments
+- `precompute`: optional function `(z, nSpecies) -> pre` that is called once per
+  community to precompute trait-dependent quantities (e.g., interaction matrices).
+  When provided, the equation function receives an extra argument:
+  `eqn_fn(i, n, z, nSpecies, pre)`.
 
-The expression can reference:
-- `n[i]` and `n[j]`: Population sizes of species (only `n` is the state variable)
-- `z[i]` and `z[j]`: Trait vectors of species i and j
-- `nSpecies`: Number of species (automatically available)
-- Loop variables like `j` in comprehensions
-- External parameters (captured in closure)
+Returns a factory function `Community -> (u, p, t) -> du` suitable for
+`EcoEvoConfig.ecoDyn`.
 
-# Returns
-A function with signature `Community -> (u, p, t) -> du` suitable for `EcoEvoConfig.ecoDyn`.
+# Examples
 
-# Example
+Basic usage (no precomputation):
 ```julia
-# Define intrinsic growth rate and interaction kernel as closures
-r(z) = 1 - sum(z.^2) / 0.25
-alpha(z_i, z_j) = exp(-sum((z_i .- z_j).^2) / 0.04)
+r(z) = 1 - sum(z.^2)
+α(zi, zj) = exp(-sum((zi .- zj).^2) / 0.04)
 
-# Create model
-ecology = @unstructuredModel begin
-    dn[i] = n[i] * (r(z[i]) - sum(alpha(z[i], z[j]) * n[j] for j in 1:nSpecies))
+ecology = unstructuredModel() do i, n, z, nSpecies
+    n[i] * (r(z[i]) - sum(α(z[i], z[j]) * n[j] for j in 1:nSpecies))
 end
+```
 
-# Use in config
-config = EcoEvoConfig(
-    ecoDyn = ecology,
-    mutationGenerator = ...,
-    integrationParams = ...,
-    extThreshold = ...
-)
+With precomputation for efficiency (avoids recomputing the interaction matrix
+at every ODE timestep):
+```julia
+ecology = unstructuredModel(
+    precompute = (z, nSpecies) -> (
+        b = [r(z[i]) for i in 1:nSpecies],
+        A = [α(z[i], z[j]) for i in 1:nSpecies, j in 1:nSpecies]
+    )
+) do i, n, z, nSpecies, pre
+    n[i] * (pre.b[i] - sum(pre.A[i, j] * n[j] for j in 1:nSpecies))
+end
 ```
 """
-macro unstructuredModel(block::Expr)
-    # Parse the block to extract the equation
-    # We expect either a single assignment or a begin...end block with one assignment
+function unstructuredModel(eqn_fn; precompute=nothing)
+    function factory(community::Community{T, AuxClasses}) where {T<:Real, AuxClasses}
+        nSp = numSpecies(community)
+        z = [traits(community, i) for i in 1:nSp]
 
-    eqs = Dict{Symbol, Expr}()
-
-    if block.head == :block
-        # Multiple expressions; find the assignment
-        for expr in block.args
-            if expr isa LineNumberNode
-                continue
-            elseif expr isa Expr && expr.head == :(=)
-                # It's an assignment: dn[i] = rhs
-                lhs = expr.args[1]
-                rhs = expr.args[2]
-
-                # Extract variable name from lhs
-                if lhs isa Expr && lhs.head == :ref
-                    # dn[i]
-                    varname = lhs.args[1]::Symbol
-                    eqs[varname] = rhs
-                else
-                    error("Expected equation of form dn[i] = ..., got $(lhs)")
+        if precompute !== nothing
+            pre = precompute(z, nSp)
+            return function (u, p, t)
+                n = @view u[1:nSp]
+                du = similar(u)
+                for i in 1:nSp
+                    du[i] = eqn_fn(i, n, z, nSp, pre)
                 end
-            else
-                error("Expected assignment in @unstructuredModel, got $(expr.head)")
+                return du
             end
-        end
-    elseif block.head == :(=)
-        # Single assignment
-        lhs = block.args[1]
-        rhs = block.args[2]
-
-        if lhs isa Expr && lhs.head == :ref
-            varname = lhs.args[1]::Symbol
-            eqs[varname] = rhs
         else
-            error("Expected equation of form dn[i] = ..., got $(lhs)")
+            return function (u, p, t)
+                n = @view u[1:nSp]
+                du = similar(u)
+                for i in 1:nSp
+                    du[i] = eqn_fn(i, n, z, nSp)
+                end
+                return du
+            end
         end
-    else
-        error("@unstructuredModel expects assignment(s), got $(block.head)")
     end
+    return factory
+end
 
-    # Should have exactly one equation (dn)
-    length(eqs) == 1 || error("@unstructuredModel expects exactly one equation (dn[i] = ...)")
 
-    dn_expr = eqs[:dn]
+"""
+    structuredModel(eqn_fn; auxDynamics=nothing, precompute=nothing)
 
-    # Generate code that creates the factory function
-    # Key optimization: Generate the actual ODE function code at macro time,
-    # not at runtime, so we don't pay eval() costs in the integration loop
+Create a structured ecological model (spatial patches or stage classes) from
+per-species-per-patch dynamics.
 
-    # Build the ODE function body: a loop that unrolls to compute du[i] for each species
-    # by substituting i into the dn_expr
-    ode_body = Expr(:block)
-    push!(ode_body.args, :(n = @view u[1:nSpecies]))
-    push!(ode_body.args, :(du = similar(u)))
+The user-supplied function `eqn_fn(i, j, N, z, R, nSpecies, nPatches)` should
+return `dN[i,j]/dt` for species `i` in patch/stage `j`, where:
+- `i::Int`: species index
+- `j::Int`: patch/stage index
+- `N`: density matrix (`N[i,j]` = density of species `i` in patch `j`)
+- `z`: vector of trait vectors (`z[i]` = trait vector of species `i`)
+- `R`: auxiliary variable vector (e.g., resource levels per patch)
+- `nSpecies::Int`: total number of species
+- `nPatches::Int`: number of patches/stages (inferred from community)
 
-    # Generate code for each species index
-    # We unroll the loop at macro time to avoid needing i as a variable
-    loop = Expr(:for, :(i = 1:nSpecies), Expr(:block))
-    push!(loop.args[2].args, :(du[i] = $(dn_expr)))
-    push!(ode_body.args, loop)
-    push!(ode_body.args, :(return du))
+# Keyword Arguments
+- `auxDynamics`: optional function `(R, N, z, nSpecies, nPatches) -> Vector`
+  returning time derivatives for auxiliary variables (e.g., resource dynamics).
+- `precompute`: optional function `(z, nSpecies, nPatches) -> pre` that is called
+  once per community to precompute trait-dependent quantities. When provided,
+  the equation function receives an extra argument:
+  `eqn_fn(i, j, N, z, R, nSpecies, nPatches, pre)`.
 
-    # Generate the factory function that captures z and creates the ODE function
-    # Use esc() so the generated code runs in the caller's module context
-    # where parameters like r, alpha, etc. are defined
-    esc(quote
-        function _factory(community::Community{T, AuxClasses}) where {T<:Real, AuxClasses}
-            nSpecies = numSpecies(community)
-            z = [traits(community, i) for i in 1:nSpecies]
+Returns a factory function `Community -> (u, p, t) -> du` suitable for
+`EcoEvoConfig.ecoDyn`.
 
-            function _ode_fn(u::Vector{T}, p, t) where T
-                $(ode_body)
+# Examples
+
+Basic usage:
+```julia
+using EcoEvoSim, Distributions
+
+d = 1.0; mu = 0.1; alpha = 1.0
+y = [d/2, -d/2]
+
+ecology = structuredModel() do i, j, N, z, R, nSpecies, nPatches
+    growth = pdf(Normal(0, 1), z[i][1] - y[j])
+    dd = alpha * sum(N[k, j] for k in 1:nSpecies)
+    (growth - dd - mu) * N[i, j] + mu * sum(N[i, k] for k in 1:nPatches if k != j)
+end
+```
+
+With precomputation:
+```julia
+ecology = structuredModel(
+    precompute = (z, nSpecies, nPatches) ->
+        [pdf(Normal(0, 1), z[i][1] - y[j]) for i in 1:nSpecies, j in 1:nPatches]
+) do i, j, N, z, R, nSpecies, nPatches, pre
+    dd = alpha * sum(N[k, j] for k in 1:nSpecies)
+    (pre[i, j] - dd - mu) * N[i, j] + mu * sum(N[i, k] for k in 1:nPatches if k != j)
+end
+```
+"""
+function structuredModel(eqn_fn; auxDynamics=nothing, precompute=nothing)
+    function factory(community::Community{T, AuxClasses}) where {T<:Real, AuxClasses}
+        nSp = numSpecies(community)
+        nPatch = numStages(community)
+        z = [traits(community, i) for i in 1:nSp]
+        nAux = sum(length(a.popsize) for a in community.aux; init=0)
+
+        pre = precompute !== nothing ? precompute(z, nSp, nPatch) : nothing
+
+        function ode_fn(u, p, t)
+            # Reshape species state: u[1:nSp*nPatch] → species(rows) × patches(cols)
+            N = reshape(@view(u[1:nSp*nPatch]), nPatch, nSp)'
+            R = @view u[nSp*nPatch+1:nSp*nPatch+nAux]
+
+            du = similar(u)
+
+            # Species dynamics
+            for i in 1:nSp
+                for j in 1:nPatch
+                    du[nPatch*(i-1)+j] = pre !== nothing ?
+                        eqn_fn(i, j, N, z, R, nSp, nPatch, pre) :
+                        eqn_fn(i, j, N, z, R, nSp, nPatch)
+                end
             end
 
-            return _ode_fn
+            # Auxiliary dynamics
+            if auxDynamics !== nothing
+                du_aux = auxDynamics(R, N, z, nSp, nPatch)
+                du[nSp*nPatch+1:end] .= du_aux
+            end
+
+            return du
         end
-        _factory
-    end)
+
+        return ode_fn
+    end
+    return factory
 end

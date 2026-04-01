@@ -31,7 +31,7 @@ export PopulationSize, Phenotype, Species, Community, EvoHistory,
        evolve!, evolve, unpackCommunity, packCommunity, lotkaVolterra,
        plotEvo, plotEvoTwoTrait, plotEvoTwoTraitInteractive,
        niceTickInterval, historyToTable, historyList, filterHistory,
-       @unstructuredModel
+       unstructuredModel, structuredModel
 
 
 end # module EcoEvoSim
