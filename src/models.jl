@@ -182,9 +182,11 @@ return `dN[i,j]/dt` for species `i` in patch/stage `j`, where:
 # Keyword Arguments
 - `auxDynamics`: optional function `(R, N, z, nSpecies, nPatches) -> Vector`
   returning time derivatives for auxiliary variables (e.g., resource dynamics).
+  When `precompute` is also provided, `auxDynamics` receives an extra argument:
+  `auxDynamics(R, N, z, nSpecies, nPatches, pre)`.
 - `precompute`: optional function `(z, nSpecies, nPatches) -> pre` that is called
   once per community to precompute trait-dependent quantities. When provided,
-  the equation function receives an extra argument:
+  both the equation function and `auxDynamics` receive an extra argument:
   `eqn_fn(i, j, N, z, R, nSpecies, nPatches, pre)`.
 
 Returns a factory function `Community -> (u, p, t) -> du` suitable for
@@ -244,7 +246,9 @@ function structuredModel(eqn_fn; auxDynamics=nothing, precompute=nothing)
 
             # Auxiliary dynamics
             if auxDynamics !== nothing
-                du_aux = auxDynamics(R, N, z, nSp, nPatch)
+                du_aux = pre !== nothing ?
+                    auxDynamics(R, N, z, nSp, nPatch, pre) :
+                    auxDynamics(R, N, z, nSp, nPatch)
                 du[nSp*nPatch+1:end] .= du_aux
             end
 

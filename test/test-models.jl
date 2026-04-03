@@ -530,7 +530,7 @@ end
         eta = 1.0; chi = 1.0; gamma = 1.0; beta = 1.0
 
         ecology = structuredModel(
-            auxDynamics = (R, N, z, nSpecies, nPatches) ->
+            auxDynamics = (R, N, z, nSpecies, nPatches, pre) ->
                 [R[k] * (eta - chi * R[k]) - gamma * sum(N[i, k] for i in 1:nSpecies) * R[k]
                  for k in 1:nPatches],
             precompute = (z, nSpecies, nPatches) ->
