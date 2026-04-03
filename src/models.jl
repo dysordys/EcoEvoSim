@@ -88,7 +88,7 @@ end
 # ─── Function-based model helpers ────────────────────────────────────────────
 
 """
-    unstructuredModel(eqn_fn; precompute=nothing)
+    unstructuredModel(eqn_fn; auxDynamics=nothing, precompute=nothing)
 
 Create an unstructured ecological model from a per-species growth rate function.
 
@@ -100,10 +100,14 @@ for species `i`, where:
 - `nSpecies::Int`: total number of species
 
 # Keyword Arguments
+- `auxDynamics`: optional function `(R, n, z, nSpecies) -> Vector`
+  returning time derivatives for auxiliary variables (e.g., resource dynamics).
+  When `precompute` is also provided, `auxDynamics` receives an extra argument:
+  `auxDynamics(R, n, z, nSpecies, pre)`.
 - `precompute`: optional function `(z, nSpecies) -> pre` that is called once per
   community to precompute trait-dependent quantities (e.g., interaction matrices).
-  When provided, the equation function receives an extra argument:
-  `eqn_fn(i, n, z, nSpecies, pre)`.
+  When provided, both the equation function and `auxDynamics` receive an extra
+  argument: `eqn_fn(i, n, z, nSpecies, pre)`.
 
 Returns a factory function `Community -> (u, p, t) -> du` suitable for
 `EcoEvoConfig.ecoDyn`.
@@ -133,31 +137,39 @@ ecology = unstructuredModel(
 end
 ```
 """
-function unstructuredModel(eqn_fn; precompute=nothing)
+function unstructuredModel(eqn_fn; auxDynamics=nothing, precompute=nothing)
     function factory(community::Community{T, AuxClasses}) where {T<:Real, AuxClasses}
         nSp = numSpecies(community)
         z = [traits(community, i) for i in 1:nSp]
+        nAux = sum(length(a.popsize) for a in community.aux; init=0)
 
-        if precompute !== nothing
-            pre = precompute(z, nSp)
-            return function (u, p, t)
-                n = @view u[1:nSp]
-                du = similar(u)
-                for i in 1:nSp
-                    du[i] = eqn_fn(i, n, z, nSp, pre)
-                end
-                return du
+        pre = precompute !== nothing ? precompute(z, nSp) : nothing
+
+        function ode_fn(u, p, t)
+            n = @view u[1:nSp]
+            R = @view u[nSp+1:nSp+nAux]
+
+            du = similar(u)
+
+            # Species dynamics
+            for i in 1:nSp
+                du[i] = pre !== nothing ?
+                    eqn_fn(i, n, z, nSp, pre) :
+                    eqn_fn(i, n, z, nSp)
             end
-        else
-            return function (u, p, t)
-                n = @view u[1:nSp]
-                du = similar(u)
-                for i in 1:nSp
-                    du[i] = eqn_fn(i, n, z, nSp)
-                end
-                return du
+
+            # Auxiliary dynamics
+            if auxDynamics !== nothing
+                du_aux = pre !== nothing ?
+                    auxDynamics(R, n, z, nSp, pre) :
+                    auxDynamics(R, n, z, nSp)
+                du[nSp+1:end] .= du_aux
             end
+
+            return du
         end
+
+        return ode_fn
     end
     return factory
 end

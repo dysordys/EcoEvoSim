@@ -351,6 +351,73 @@ end
         @test dudt_pre ≈ dudt_lv rtol=1e-10
     end
 
+
+    @testset "with_auxDynamics" begin
+        eta = 1.0; K = 10.0
+
+        ecology = unstructuredModel(
+            auxDynamics = (R, n, z, nSpecies) ->
+                [eta * (K - R[1]) - sum(n[i] * R[1] for i in 1:nSpecies)]
+        ) do i, n, z, nSpecies
+            n[i] * (R_unused = 0.0; 1.0 - n[i])  # simple logistic, ignore R here
+        end
+
+        # Need R accessible in the do block — rewrite using the full signature
+        ecology = unstructuredModel(
+            auxDynamics = (R, n, z, nSpecies) ->
+                [eta * (K - R[1]) - sum(n[i] * R[1] for i in 1:nSpecies)]
+        ) do i, n, z, nSpecies
+            n[i] * (1.0 - n[i])
+        end
+
+        comm = Community([0.5, 0.3], [0.0, 1.0], [5.0])
+        ode_fn = ecology(comm)
+
+        u = unpackCommunity(comm)
+        dudt = ode_fn(u, nothing, 0.0)
+
+        # 2 species + 1 aux
+        @test length(dudt) == 3
+
+        # Species dynamics: n[i]*(1 - n[i])
+        @test dudt[1] ≈ 0.5 * (1.0 - 0.5) rtol=1e-10
+        @test dudt[2] ≈ 0.3 * (1.0 - 0.3) rtol=1e-10
+
+        # Aux dynamics: eta*(K - R) - (n1 + n2)*R = 1*(10-5) - (0.5+0.3)*5 = 5 - 4 = 1
+        @test dudt[3] ≈ 1.0 * (10.0 - 5.0) - (0.5 + 0.3) * 5.0 rtol=1e-10
+    end
+
+
+    @testset "precompute_with_auxDynamics" begin
+        eta = 1.0; K = 10.0
+
+        ecology = unstructuredModel(
+            auxDynamics = (R, n, z, nSpecies, pre) ->
+                [eta * (K - R[1]) - sum(pre.a[i] * n[i] * R[1] for i in 1:nSpecies)],
+            precompute = (z, nSpecies) -> (
+                a = [1.0 + z[i][1]^2 for i in 1:nSpecies],
+            )
+        ) do i, n, z, nSpecies, pre
+            pre.a[i] * n[i] * (1.0 - n[i])
+        end
+
+        comm = Community([0.5, 0.3], [0.0, 1.0], [5.0])
+        ode_fn = ecology(comm)
+
+        u = unpackCommunity(comm)
+        dudt = ode_fn(u, nothing, 0.0)
+
+        @test length(dudt) == 3
+
+        # pre.a = [1 + 0^2, 1 + 1^2] = [1.0, 2.0]
+        # Species: pre.a[i]*n[i]*(1-n[i])
+        @test dudt[1] ≈ 1.0 * 0.5 * 0.5 rtol=1e-10       # a=1.0
+        @test dudt[2] ≈ 2.0 * 0.3 * 0.7 rtol=1e-10       # a=2.0
+
+        # Aux: eta*(K-R) - sum(a[i]*n[i]*R) = 1*(10-5) - (1*0.5*5 + 2*0.3*5) = 5 - 5.5 = -0.5
+        @test dudt[3] ≈ 1.0 * (10.0 - 5.0) - (1.0*0.5*5.0 + 2.0*0.3*5.0) rtol=1e-10
+    end
+
 end
 
 
