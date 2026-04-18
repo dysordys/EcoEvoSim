@@ -102,6 +102,6 @@ Random.seed!(54321)
 
 lineage = Community([1.0 1.0;], [-0.2], [1.0, 1.0])
 lineage = ecoDyn(lineage, config)
-@time lineage = evolve!(lineage, config, 1000);
+@time lineage = evolve(lineage, config, 1000);
 
 p = plotEvo(lineage)

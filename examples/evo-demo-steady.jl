@@ -25,7 +25,7 @@ Random.seed!(54321)
 
 lineage = Community([1.0], [0.3], Float64[])
 lineage = ecoDyn(lineage, config)
-@time lineage = evolve!(lineage, config, 1500);
+@time lineage = evolve(lineage, config, 1500);
 
 p = plotEvo(lineage)
 # savefig(p, "examples/plot-steady.png")

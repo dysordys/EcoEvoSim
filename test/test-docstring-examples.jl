@@ -197,13 +197,13 @@ using DifferentialEquations
         # evolve! examples
         Random.seed!(42)
         history = EvoHistory(comm)
-        evolve!(history, config, 5, showProgress=false)
+        EcoEvoSim.evolve!(history, config, 5, showProgress=false)
         @test length(history.history) == 6  # Initial + 5 steps
 
         # Alternative evolve! form
         Random.seed!(42)
         comm_new = Community([1.0, 1.0], [0.1, 0.2], Float64[])
-        history2 = evolve!(comm_new, config, 5, showProgress=false)
+        history2 = EcoEvoSim.evolve!(comm_new, config, 5, showProgress=false)
         @test length(history2.history) == 6
     end
 
@@ -243,7 +243,7 @@ result = ecoDyn(community, config)
 
         Random.seed!(42)
         comm = Community([1.0, 1.0], [0.1, 0.2], Float64[])
-        history = evolve!(comm, config, 3, showProgress=false)
+        history = evolve(comm, config, 3, showProgress=false)
 
         @test_nowarn plotEvo(history)
     end
@@ -262,7 +262,7 @@ result = ecoDyn(community, config)
 
         Random.seed!(42)
         comm = Community([1.0, 1.0], [0.1, 0.2], Float64[])
-        history = evolve!(comm, config, 3, showProgress=false)
+        history = evolve(comm, config, 3, showProgress=false)
 
         table = historyToTable(history)
         @test haskey(table, "mutNo")

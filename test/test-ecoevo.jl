@@ -883,7 +883,7 @@ numTests = 50
         nMutEvents = 5
 
         # Run evolution
-        evolve!(history, config, nMutEvents)
+        EcoEvoSim.evolve!(history, config, nMutEvents)
 
         # Check that history has been extended correctly
         @test length(history.history) == 1 + nMutEvents  # initial + nMutEvents
@@ -925,7 +925,7 @@ numTests = 50
         )
 
         nMutEvents = 3
-        evolve!(history, config, nMutEvents)
+        EcoEvoSim.evolve!(history, config, nMutEvents)
 
         # Verify each step adds to history
         @test length(history.history) == 4  # 1 initial + 3 events
@@ -969,7 +969,7 @@ numTests = 50
         )
 
         nMutEvents = 3
-        evolve!(history, config, nMutEvents)
+        EcoEvoSim.evolve!(history, config, nMutEvents)
 
         # History should have correct length
         @test length(history.history) == 4
@@ -1000,7 +1000,7 @@ numTests = 50
             extThreshold=1e-8
         )
 
-        @test_throws ArgumentError evolve!(emptyHistory, config, 1)
+        @test_throws ArgumentError EcoEvoSim.evolve!(emptyHistory, config, 1)
     end
 
 
@@ -1020,7 +1020,7 @@ numTests = 50
             extThreshold=1e-8
         )
 
-        evolve!(history, config, 0)
+        EcoEvoSim.evolve!(history, config, 0)
 
         # History should remain unchanged
         @test length(history.history) == 1
@@ -1048,7 +1048,7 @@ numTests = 50
         nMutEvents = 4
 
         # Call convenience method - returns history
-        history = evolve!(initialComm, config, nMutEvents)
+        history = EcoEvoSim.evolve!(initialComm, config, nMutEvents)
 
         # Check that history is returned and has correct structure
         @test history isa EvoHistory{Float64, 0}
@@ -1083,11 +1083,11 @@ numTests = 50
         )
 
         # Use convenience method
-        history1 = evolve!(comm1, config, 3)
+        history1 = EcoEvoSim.evolve!(comm1, config, 3)
 
         # Manual history creation
         history2 = EvoHistory{Float64, 0}([comm2])
-        evolve!(history2, config, 3)
+        EcoEvoSim.evolve!(history2, config, 3)
 
         # Both should have same structure
         @test length(history1.history) == length(history2.history)
@@ -1112,7 +1112,7 @@ numTests = 50
         )
 
         # Create initial history
-        history1 = evolve!(initialComm, config, 3; showProgress=false)
+        history1 = evolve(initialComm, config, 3; showProgress=false)
         originalLength = length(history1.history)
 
         # Use non-mutating evolve
@@ -1186,7 +1186,7 @@ numTests = 50
 
         # Use both methods
         history1 = evolve(comm1, config, 4; showProgress=false)
-        history2 = evolve!(comm2, config, 4; showProgress=false)
+        history2 = EcoEvoSim.evolve!(comm2, config, 4; showProgress=false)
 
         # Should produce histories with same structure
         @test length(history1.history) == length(history2.history)
