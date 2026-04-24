@@ -527,6 +527,16 @@ end
 
 
 """
+    noMutation(community::Community) -> Community
+
+Dummy mutation generator that returns the community unchanged, without introducing
+any new mutant species. Useful for running pure ecological dynamics (no evolution)
+within the eco-evolutionary framework.
+"""
+noMutation(community::Community) = community
+
+
+"""
     singleEvoStep(community::Community{T, AuxClasses},
                   config::EcoEvoConfig{T}) where {T, AuxClasses}
 
