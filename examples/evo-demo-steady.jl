@@ -11,7 +11,7 @@ kernelFn(zi, zj) = -(tanh(sum(zi .- zj) / 0.15) + 1) / 2
 
 config = EcoEvoConfig(
     ecoDyn = lotkaVolterra(growthFn, kernelFn),
-    mutationGenerator = c -> generateMutant(c; invaderPopsize=0.001, variance=0.002^2),
+    mutationGenerator = generateMutant(invaderPopsize = 0.001, variance = 0.002^2),
     integrationParams = IntegrationParams(
         maxTime = Inf,
         algorithm = DynamicSS(),

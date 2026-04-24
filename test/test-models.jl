@@ -552,7 +552,7 @@ end
         config = EcoEvoConfig(
             ecoDyn = ecology,
             mutationGenerator =
-                c -> generateMutantSpatial(c; invaderPopsize=0.001, variance=0.003^2),
+                generateMutantSpatial(invaderPopsize=0.001, variance=0.003^2),
             integrationParams = IntegrationParams(maxTime = 10.0),
             extThreshold = 0.003
         )

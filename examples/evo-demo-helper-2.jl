@@ -26,7 +26,7 @@ end
 
 config = EcoEvoConfig(
     ecoDyn = ecology,
-    mutationGenerator = c -> generateMutant(c; invaderPopsize=0.001, variance=0.002^2),
+    mutationGenerator = generateMutant(invaderPopsize = 0.001, variance = 0.002^2),
     integrationParams = IntegrationParams(
         maxTime = 1e12,
         abstol = 1e-14,

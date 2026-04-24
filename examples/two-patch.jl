@@ -68,7 +68,7 @@ end
 config = EcoEvoConfig(
     ecoDyn = comm -> multipatch(comm; d = 1.0, mu = 0.1, alpha = 1.0),
     mutationGenerator =
-        c -> generateMutantSpatial(c; invaderPopsize=0.001, variance=0.003^2),
+        generateMutantSpatial(invaderPopsize = 0.001, variance = 0.003^2),
     integrationParams = IntegrationParams(
         maxTime = Inf,
         algorithm = DynamicSS(),

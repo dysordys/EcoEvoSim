@@ -68,7 +68,7 @@ Configuration for eco-evolutionary simulations.
 # Fields
 - `ecoDyn::EcoDynamics`: Factory function taking `Community` and returning ODE function
 - `mutationGenerator::MutGenerator`: Function generating mutants from community
-  (takes only community as input; captures invaderPopsize via closure)
+  (takes only community as input; returned by a factory such as `generateMutant`)
 - `integrationParams::IntegrationParams`: ODE integration parameters
 - `extThreshold::T`: Population size below which species go extinct
 
@@ -76,7 +76,7 @@ Configuration for eco-evolutionary simulations.
 ```julia
 config = EcoEvoConfig(
     ecoDyn = lotkaVolterra(growthFn, interactionFn),
-    mutationGenerator = (comm) -> generateMutant(comm; invaderPopsize=0.001, variance=0.01),
+    mutationGenerator = generateMutant(invaderPopsize=0.001, variance=0.01),
     integrationParams = IntegrationParams(maxTime = 50.0),
     extThreshold = 0.003
 )
@@ -288,64 +288,72 @@ function generateMutant(
 end
 
 
-# User-facing methods with uniform random selection
+# User-facing factory functions (return Community -> Community closures)
 
 """
-    generateMutant(community::Community{T, AuxClasses}; invaderPopsize::T,
-                   covMat::AbstractMatrix{T} = nothing, variance::T = nothing) where {T, AuxClasses}
+    generateMutant(; invaderPopsize, covMat=nothing, variance=nothing)
 
-Generate a mutant with uniform random parent selection.
+Factory: return a mutation generator with uniform random parent selection.
+Returns a function `Community -> Community` suitable for the `mutationGenerator`
+field of `EcoEvoConfig`.
+
 Specify either `covMat` (full covariance matrix) or `variance` (diagonal covariance).
+Argument validation (excluding covariance matrix dimension) occurs at factory creation time.
 """
-function generateMutant(
-    community::Community{T, AuxClasses};
-    invaderPopsize::T,
-    covMat::Union{AbstractMatrix{T}, Nothing} = nothing,
-    variance::Union{T, Nothing} = nothing
-) where {T<:Real, AuxClasses}
+function generateMutant(;
+    invaderPopsize::Real,
+    covMat::Union{AbstractMatrix{<:Real}, Nothing} = nothing,
+    variance::Union{Real, Nothing} = nothing
+)
     if covMat !== nothing && variance !== nothing
         throw(ArgumentError("Specify either covMat or variance, not both"))
     elseif covMat === nothing && variance === nothing
         throw(ArgumentError("Specify either covMat or variance"))
     end
-
-    if covMat !== nothing
-        generateMutant(community, invaderPopsize, covMat, randomSpecies)
-    else
+    if variance !== nothing
         variance > 0 || throw(ArgumentError("variance must be positive"))
-        covMat_computed = Matrix{T}(variance * I(traitSpaceDim(community)))
-        generateMutant(community, invaderPopsize, covMat_computed, randomSpecies)
+    end
+    return function(community::Community{T, AuxClasses}) where {T<:Real, AuxClasses}
+        if covMat !== nothing
+            generateMutant(community, T(invaderPopsize), Matrix{T}(covMat), randomSpecies)
+        else
+            covMat_computed = Matrix{T}(T(variance) * I(traitSpaceDim(community)))
+            generateMutant(community, T(invaderPopsize), covMat_computed, randomSpecies)
+        end
     end
 end
 
 
-# User-facing methods with population-weighted random selection
-
 """
-    generateMutantWeighted(community::Community{T, AuxClasses}; invaderPopsize::T,
-                           covMat::AbstractMatrix{T} = nothing, variance::T = nothing) where {T, AuxClasses}
+    generateMutantWeighted(; invaderPopsize, covMat=nothing, variance=nothing)
 
-Generate a mutant with population-weighted parent selection.
+Factory: return a mutation generator with population-weighted parent selection.
+Returns a function `Community -> Community` suitable for the `mutationGenerator`
+field of `EcoEvoConfig`.
+
 Specify either `covMat` (full covariance matrix) or `variance` (diagonal covariance).
+Argument validation (excluding covariance matrix dimension) occurs at factory creation time.
 """
-function generateMutantWeighted(
-    community::Community{T, AuxClasses};
-    invaderPopsize::T,
-    covMat::Union{AbstractMatrix{T}, Nothing} = nothing,
-    variance::Union{T, Nothing} = nothing
-) where {T<:Real, AuxClasses}
+function generateMutantWeighted(;
+    invaderPopsize::Real,
+    covMat::Union{AbstractMatrix{<:Real}, Nothing} = nothing,
+    variance::Union{Real, Nothing} = nothing
+)
     if covMat !== nothing && variance !== nothing
         throw(ArgumentError("Specify either covMat or variance, not both"))
     elseif covMat === nothing && variance === nothing
         throw(ArgumentError("Specify either covMat or variance"))
     end
-
-    if covMat !== nothing
-        generateMutant(community, invaderPopsize, covMat, weightedRandomSpecies)
-    else
+    if variance !== nothing
         variance > 0 || throw(ArgumentError("variance must be positive"))
-        covMat_computed = Matrix{T}(variance * I(traitSpaceDim(community)))
-        generateMutant(community, invaderPopsize, covMat_computed, weightedRandomSpecies)
+    end
+    return function(community::Community{T, AuxClasses}) where {T<:Real, AuxClasses}
+        if covMat !== nothing
+            generateMutant(community, T(invaderPopsize), Matrix{T}(covMat), weightedRandomSpecies)
+        else
+            covMat_computed = Matrix{T}(T(variance) * I(traitSpaceDim(community)))
+            generateMutant(community, T(invaderPopsize), covMat_computed, weightedRandomSpecies)
+        end
     end
 end
 
@@ -430,47 +438,46 @@ end
 
 
 """
-    generateMutantSpatial(community::Community{T, AuxClasses}; invaderPopsize::T,
-                          covMat::AbstractMatrix{T} = nothing, variance::T = nothing) where {T, AuxClasses}
+    generateMutantSpatial(; invaderPopsize, covMat=nothing, variance=nothing)
 
-Generate a spatially-localized mutant with uniform random parent selection.
+Factory: return a mutation generator for spatially-structured populations with uniform
+random parent selection. Returns a function `Community -> Community` suitable for the
+`mutationGenerator` field of `EcoEvoConfig`.
+
 The mutant appears in a single patch, chosen probabilistically based on patch population sizes.
-
 Specify either `covMat` (full covariance matrix) or `variance` (diagonal covariance).
-
-# Arguments
-- `community::Community{T}`: The current community
-- `invaderPopsize::T`: Total population size of the invader
-- `covMat::AbstractMatrix{T}`: Full covariance matrix for trait mutations (optional)
-- `variance::T`: Variance for diagonal covariance matrix (optional)
+Argument validation (excluding covariance matrix dimension) occurs at factory creation time.
 
 # Example
 ```julia
 # Create a spatially-structured community (2 patches, 1 species with density in each)
 comm = Community([1.0, 1.0], [0.0])
 
-# Generate a mutant that will appear in one patch based on population distribution
-mutant_comm = generateMutantSpatial(comm; invaderPopsize=0.001, variance=0.01^2)
+# Create generator and apply it
+gen = generateMutantSpatial(invaderPopsize=0.001, variance=0.01^2)
+mutant_comm = gen(comm)
 ```
 """
-function generateMutantSpatial(
-    community::Community{T, AuxClasses};
-    invaderPopsize::T,
-    covMat::Union{AbstractMatrix{T}, Nothing} = nothing,
-    variance::Union{T, Nothing} = nothing
-) where {T<:Real, AuxClasses}
+function generateMutantSpatial(;
+    invaderPopsize::Real,
+    covMat::Union{AbstractMatrix{<:Real}, Nothing} = nothing,
+    variance::Union{Real, Nothing} = nothing
+)
     if covMat !== nothing && variance !== nothing
         throw(ArgumentError("Specify either covMat or variance, not both"))
     elseif covMat === nothing && variance === nothing
         throw(ArgumentError("Specify either covMat or variance"))
     end
-
-    if covMat !== nothing
-        generateMutantSpatial(community, invaderPopsize, covMat, randomSpecies)
-    else
+    if variance !== nothing
         variance > 0 || throw(ArgumentError("variance must be positive"))
-        covMat_computed = Matrix{T}(variance * I(traitSpaceDim(community)))
-        generateMutantSpatial(community, invaderPopsize, covMat_computed, randomSpecies)
+    end
+    return function(community::Community{T, AuxClasses}) where {T<:Real, AuxClasses}
+        if covMat !== nothing
+            generateMutantSpatial(community, T(invaderPopsize), Matrix{T}(covMat), randomSpecies)
+        else
+            covMat_computed = Matrix{T}(T(variance) * I(traitSpaceDim(community)))
+            generateMutantSpatial(community, T(invaderPopsize), covMat_computed, randomSpecies)
+        end
     end
 end
 
@@ -478,50 +485,49 @@ end
 # Population-weighted spatial mutant generation
 
 """
-    generateMutantSpatialWeighted(community::Community{T, AuxClasses}; invaderPopsize::T,
-                                  covMat::AbstractMatrix{T} = nothing, variance::T = nothing) where {T, AuxClasses}
+    generateMutantSpatialWeighted(; invaderPopsize, covMat=nothing, variance=nothing)
 
-Generate a spatially-localized mutant with population-weighted parent selection.
+Factory: return a mutation generator for spatially-structured populations with
+population-weighted parent selection. Returns a function `Community -> Community`
+suitable for the `mutationGenerator` field of `EcoEvoConfig`.
 
 Combines two features:
 - Parent species is selected with probability proportional to its total population size
 - The mutant appears in a single patch, chosen probabilistically based on patch population sizes
 
 Specify either `covMat` (full covariance matrix) or `variance` (diagonal covariance).
-
-# Arguments
-- `community::Community{T}`: The current community
-- `invaderPopsize::T`: Total population size of the invader
-- `covMat::AbstractMatrix{T}`: Full covariance matrix for trait mutations (optional)
-- `variance::T`: Variance for diagonal covariance matrix (optional)
+Argument validation (excluding covariance matrix dimension) occurs at factory creation time.
 
 # Example
 ```julia
 # Create a spatially-structured community with unequal species abundances
 comm = Community([[1.0, 1.0], [10.0, 10.0]], [0.0, 0.3])  # 2 species, 2 patches
 
-# Generate a mutant: parent selected by abundance, placed in a single patch
-mutant_comm = generateMutantSpatialWeighted(comm; invaderPopsize=0.001, variance=0.01^2)
+# Create generator and apply it
+gen = generateMutantSpatialWeighted(invaderPopsize=0.001, variance=0.01^2)
+mutant_comm = gen(comm)
 ```
 """
-function generateMutantSpatialWeighted(
-    community::Community{T, AuxClasses};
-    invaderPopsize::T,
-    covMat::Union{AbstractMatrix{T}, Nothing} = nothing,
-    variance::Union{T, Nothing} = nothing
-) where {T<:Real, AuxClasses}
+function generateMutantSpatialWeighted(;
+    invaderPopsize::Real,
+    covMat::Union{AbstractMatrix{<:Real}, Nothing} = nothing,
+    variance::Union{Real, Nothing} = nothing
+)
     if covMat !== nothing && variance !== nothing
         throw(ArgumentError("Specify either covMat or variance, not both"))
     elseif covMat === nothing && variance === nothing
         throw(ArgumentError("Specify either covMat or variance"))
     end
-
-    if covMat !== nothing
-        generateMutantSpatial(community, invaderPopsize, covMat, weightedRandomSpecies)
-    else
+    if variance !== nothing
         variance > 0 || throw(ArgumentError("variance must be positive"))
-        covMat_computed = Matrix{T}(variance * I(traitSpaceDim(community)))
-        generateMutantSpatial(community, invaderPopsize, covMat_computed, weightedRandomSpecies)
+    end
+    return function(community::Community{T, AuxClasses}) where {T<:Real, AuxClasses}
+        if covMat !== nothing
+            generateMutantSpatial(community, T(invaderPopsize), Matrix{T}(covMat), weightedRandomSpecies)
+        else
+            covMat_computed = Matrix{T}(T(variance) * I(traitSpaceDim(community)))
+            generateMutantSpatial(community, T(invaderPopsize), covMat_computed, weightedRandomSpecies)
+        end
     end
 end
 
@@ -656,7 +662,7 @@ julia> kernelFn = (zi, zj) -> -(tanh(sum(zi .- zj) / 0.3) + 1) / 2;
 
 julia> config = EcoEvoConfig(
            ecoDyn = lotkaVolterra(growthFn, kernelFn),
-           mutationGenerator = (c, cfg) -> generateMutant(c, cfg, 0.002^2),
+           mutationGenerator = generateMutant(invaderPopsize=0.001, variance=0.002^2),
            integrationParams = IntegrationParams(maxTime = 1.0e8),
            invaderPopsize = 0.001,
            extThreshold = 0.003
@@ -713,7 +719,7 @@ julia> kernelFn = (zi, zj) -> -(tanh(sum(zi .- zj) / 0.3) + 1) / 2;
 
 julia> config = EcoEvoConfig(
            ecoDyn = lotkaVolterra(growthFn, kernelFn),
-           mutationGenerator = (c, cfg) -> generateMutant(c, cfg, 0.002^2),
+           mutationGenerator = generateMutant(invaderPopsize=0.001, variance=0.002^2),
            integrationParams = IntegrationParams(maxTime = 1.0e8),
            invaderPopsize = 0.001,
            extThreshold = 0.003
