@@ -6,8 +6,10 @@ using Plots
 using Random
 
 
-growthFn(z) = (tanh(sum(z .- 0.5) / 0.2) + 1) / 2 - 0.006692851
-kernelFn(zi, zj) = -(tanh(sum(zi .- zj) / 0.15) + 1) / 2
+Q(z) = (tanh(z) + 1) / 2
+growthFn(z) = Q((z[1] - 0.5) / 0.2) - Q(-0.5 / 0.2)
+kernelFn(zi, zj) = -Q((zi[1] - zj[1]) / 0.15)
+
 
 # Create model using unstructuredModel helper function:
 ecology = unstructuredModel() do i, n, z, nSpecies
