@@ -59,8 +59,8 @@ end
 Represents a single species with population structure and phenotypic traits.
 
 # Fields
-- `popsize::Vector{PopulationSize{T}}`: Population sizes (typically one element)
-- `trait::Vector{Phenotype{T}}`: Phenotypic traits (typically one element)
+- `popsize::PopulationSize{T}`: Population sizes across stage classes / patches
+- `trait::Phenotype{T}`: Phenotypic trait values
 
 # Example
 ```julia
@@ -72,12 +72,10 @@ sp = Species([5.0, 15.0], [0.5, -0.2])
 ```
 """
 struct Species{T<:Real}
-    popsize :: Vector{PopulationSize{T}}
-    trait :: Vector{Phenotype{T}}
-    function Species{T}(popsize::Vector{PopulationSize{T}},
-                        trait::Vector{Phenotype{T}}) where {T<:Real}
-        length(popsize) > 0 || throw(ArgumentError("popsize must have positive length"))
-        length(trait) > 0 || throw(ArgumentError("trait must have positive length"))
+    popsize :: PopulationSize{T}
+    trait :: Phenotype{T}
+    function Species{T}(popsize::PopulationSize{T},
+                        trait::Phenotype{T}) where {T<:Real}
         new{T}(popsize, trait)
     end
 end

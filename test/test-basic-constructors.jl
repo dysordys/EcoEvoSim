@@ -60,8 +60,8 @@ numTests = 50
         sps = Species(popMat, traitMat)
         @test length(sps) == 3
         @test all(sp -> sp isa Species, sps)
-        @test all(sp -> length(sp.popsize[1].popsize) == 2, sps)
-        @test all(sp -> length(sp.trait[1].trait) == 4, sps)
+        @test all(sp -> length(sp.popsize.popsize) == 2, sps)
+        @test all(sp -> length(sp.trait.trait) == 4, sps)
 
         # Test batch constructor from vectors of vectors
         popVecs = [rand(Float64, 2) for _ in 1:3]
@@ -69,8 +69,8 @@ numTests = 50
         sps2 = Species(popVecs, traitVecs)
         @test length(sps2) == 3
         @test all(sp -> sp isa Species, sps2)
-        @test all(sp -> length(sp.popsize[1].popsize) == 2, sps2)
-        @test all(sp -> length(sp.trait[1].trait) == 4, sps2)
+        @test all(sp -> length(sp.popsize.popsize) == 2, sps2)
+        @test all(sp -> length(sp.trait.trait) == 4, sps2)
 
 
     @testset "testing_Species_constructor" begin
@@ -78,16 +78,11 @@ numTests = 50
             T = Float64
             stageClasses = rand(1:5)
             traitDim = rand(1:5)
-            num_instances = rand(1:3)
-            popsize = [PopulationSize{T}(Vector{T}(
-                rand(Float64, stageClasses)
-            )) for _ in 1:num_instances]
-            trait = [Phenotype{T}(Vector{T}(
-                rand(Float64, traitDim)
-            )) for _ in 1:num_instances]
+            popsize = PopulationSize{T}(Vector{T}(rand(Float64, stageClasses)))
+            trait = Phenotype{T}(Vector{T}(rand(Float64, traitDim)))
             sp = Species{T}(popsize, trait)
-            @test length(sp.popsize) == num_instances
-            @test length(sp.trait) == num_instances
+            @test sp.popsize === popsize
+            @test sp.trait === trait
         end
     end
 
@@ -102,10 +97,8 @@ numTests = 50
             phenotype = Phenotype{T}(Vector{T}(
                 rand(Float64, traitDim)))
             sp = Species(popsize, phenotype)
-            @test length(sp.popsize) == 1
-            @test length(sp.trait) == 1
-            @test sp.popsize[1] === popsize
-            @test sp.trait[1] === phenotype
+            @test sp.popsize === popsize
+            @test sp.trait === phenotype
         end
     end
 
@@ -117,10 +110,8 @@ numTests = 50
             traitDim = rand(1:3)
             auxClasses = rand(0:3)
             sp = Species{T}(
-                [PopulationSize{T}(Vector{T}(
-                    rand(Float64, stageClasses)))],
-                [Phenotype{T}(Vector{T}(
-                    rand(Float64, traitDim)))])
+                PopulationSize{T}(Vector{T}(rand(Float64, stageClasses))),
+                Phenotype{T}(Vector{T}(rand(Float64, traitDim))))
             aux = [PopulationSize{T}([rand(Float64)])
                 for _ in 1:auxClasses]
             comm = Community{T, auxClasses}([sp], aux)
@@ -137,10 +128,8 @@ numTests = 50
             auxClasses = rand(0:3)
             time = rand(Float64)
             sp = Species{T}(
-                [PopulationSize{T}(Vector{T}(
-                    rand(Float64, stageClasses)))],
-                [Phenotype{T}(Vector{T}(
-                    rand(Float64, traitDim)))])
+                PopulationSize{T}(Vector{T}(rand(Float64, stageClasses))),
+                Phenotype{T}(Vector{T}(rand(Float64, traitDim))))
             aux = [PopulationSize{T}([rand(Float64)])
                 for _ in 1:auxClasses]
             comm = Community{T, auxClasses}(
@@ -159,10 +148,8 @@ numTests = 50
             traitDim = rand(1:3)
             auxClasses = rand(0:3)
             sp = Species{T}(
-                [PopulationSize{T}(Vector{T}(
-                    rand(Float64, stageClasses)))],
-                [Phenotype{T}(Vector{T}(
-                    rand(Float64, traitDim)))])
+                PopulationSize{T}(Vector{T}(rand(Float64, stageClasses))),
+                Phenotype{T}(Vector{T}(rand(Float64, traitDim))))
             aux = [PopulationSize{T}([rand(Float64)])
                 for _ in 1:auxClasses]
             comm = Community([sp], aux)
@@ -184,10 +171,8 @@ numTests = 50
             comm = Community(popvals, traitvals, auxvals)
             @test length(comm.species) == numSpecies
             for (i, sp) in enumerate(comm.species)
-                @test length(sp.popsize) == 1
-                @test length(sp.trait) == 1
-                @test sp.popsize[1].popsize == [popvals[i]]
-                @test sp.trait[1].trait == [traitvals[i]]
+                @test sp.popsize.popsize == [popvals[i]]
+                @test sp.trait.trait == [traitvals[i]]
             end
             if isempty(auxvals)
                 @test length(comm.aux) == 0
@@ -212,10 +197,8 @@ numTests = 50
             @test length(comm.species) == numSpecies
             @test length(comm.aux) == 0
             for (i, sp) in enumerate(comm.species)
-                @test length(sp.popsize) == 1
-                @test length(sp.trait) == 1
-                @test sp.popsize[1].popsize == [popvals[i]]
-                @test sp.trait[1].trait == [traitvals[i]]
+                @test sp.popsize.popsize == [popvals[i]]
+                @test sp.trait.trait == [traitvals[i]]
             end
         end
 
@@ -228,8 +211,8 @@ numTests = 50
         @test length(comm_no_aux.species) == length(comm_with_empty_aux.species)
         @test length(comm_no_aux.aux) == length(comm_with_empty_aux.aux) == 0
         for i in 1:numSpecies
-            @test comm_no_aux.species[i].popsize[1].popsize == comm_with_empty_aux.species[i].popsize[1].popsize
-            @test comm_no_aux.species[i].trait[1].trait == comm_with_empty_aux.species[i].trait[1].trait
+            @test comm_no_aux.species[i].popsize.popsize == comm_with_empty_aux.species[i].popsize.popsize
+            @test comm_no_aux.species[i].trait.trait == comm_with_empty_aux.species[i].trait.trait
         end
 
         # Invalid: pop and trait must have same length
@@ -248,10 +231,8 @@ numTests = 50
             @test length(comm.species) == numSpecies
             @test length(comm.aux) == 0
             for (i, sp) in enumerate(comm.species)
-                @test length(sp.popsize) == 1
-                @test sp.popsize[1].popsize == vec(popMat[i, :])
-                @test length(sp.trait) == 1
-                @test sp.trait[1].trait == [traitVec[i]]
+                @test sp.popsize.popsize == vec(popMat[i, :])
+                @test sp.trait.trait == [traitVec[i]]
             end
         end
 
@@ -276,10 +257,8 @@ numTests = 50
                 @test length(comm.aux) == 1  # Single structured auxiliary variable
             end
             for (i, sp) in enumerate(comm.species)
-                @test length(sp.popsize) == 1
-                @test sp.popsize[1].popsize == vec(popMat[i, :])
-                @test length(sp.trait) == 1
-                @test sp.trait[1].trait == [traitVec[i]]
+                @test sp.popsize.popsize == vec(popMat[i, :])
+                @test sp.trait.trait == [traitVec[i]]
             end
             if !isempty(auxvals)
                 @test comm.aux[1].popsize == auxvals
@@ -302,10 +281,8 @@ numTests = 50
             @test length(comm.species) == numSpecies
             @test length(comm.aux) == 0
             for (i, sp) in enumerate(comm.species)
-                @test length(sp.popsize) == 1
-                @test sp.popsize[1].popsize == [popVec[i]]
-                @test length(sp.trait) == 1
-                @test sp.trait[1].trait == vec(traitMat[i, :])
+                @test sp.popsize.popsize == [popVec[i]]
+                @test sp.trait.trait == vec(traitMat[i, :])
             end
         end
 
@@ -330,10 +307,8 @@ numTests = 50
                 @test length(comm.aux) == 1  # Single structured auxiliary variable
             end
             for (i, sp) in enumerate(comm.species)
-                @test length(sp.popsize) == 1
-                @test sp.popsize[1].popsize == [popVec[i]]
-                @test length(sp.trait) == 1
-                @test sp.trait[1].trait == vec(traitMat[i, :])
+                @test sp.popsize.popsize == [popVec[i]]
+                @test sp.trait.trait == vec(traitMat[i, :])
             end
             if !isempty(auxvals)
                 @test comm.aux[1].popsize == auxvals
@@ -357,10 +332,8 @@ numTests = 50
             @test length(comm.species) == numSpecies
             @test length(comm.aux) == 0
             for (i, sp) in enumerate(comm.species)
-                @test length(sp.popsize) == 1
-                @test sp.popsize[1].popsize == vec(popMat[i, :])
-                @test length(sp.trait) == 1
-                @test sp.trait[1].trait == vec(traitMat[i, :])
+                @test sp.popsize.popsize == vec(popMat[i, :])
+                @test sp.trait.trait == vec(traitMat[i, :])
             end
         end
 
@@ -386,10 +359,8 @@ numTests = 50
                 @test length(comm.aux) == 1  # Single structured auxiliary variable
             end
             for (i, sp) in enumerate(comm.species)
-                @test length(sp.popsize) == 1
-                @test sp.popsize[1].popsize == vec(popMat[i, :])
-                @test length(sp.trait) == 1
-                @test sp.trait[1].trait == vec(traitMat[i, :])
+                @test sp.popsize.popsize == vec(popMat[i, :])
+                @test sp.trait.trait == vec(traitMat[i, :])
             end
             if !isempty(auxvals)
                 @test comm.aux[1].popsize == auxvals
@@ -408,10 +379,8 @@ numTests = 50
             traitDim = rand(1:3)
             auxClasses = rand(0:3)
             sp = Species{T}(
-                [PopulationSize{T}(Vector{T}(
-                    rand(Float64, stageClasses)))],
-                [Phenotype{T}(Vector{T}(
-                    rand(Float64, traitDim)))])
+                PopulationSize{T}(Vector{T}(rand(Float64, stageClasses))),
+                Phenotype{T}(Vector{T}(rand(Float64, traitDim))))
             aux = [PopulationSize{T}([rand(Float64)])
                 for _ in 1:auxClasses]
             comm = Community{T, auxClasses}([sp], aux)
@@ -432,10 +401,8 @@ numTests = 50
             comms = Community{T, auxClasses}[]
             for _ in 1:numComms
                 sp = Species{T}(
-                    [PopulationSize{T}(Vector{T}(
-                        rand(Float64, stageClasses)))],
-                    [Phenotype{T}(Vector{T}(
-                        rand(Float64, traitDim)))])
+                    PopulationSize{T}(Vector{T}(rand(Float64, stageClasses))),
+                    Phenotype{T}(Vector{T}(rand(Float64, traitDim))))
                 aux = [PopulationSize{T}([rand(Float64)])
                     for _ in 1:auxClasses]
                 comm = Community{T, auxClasses}([sp], aux)

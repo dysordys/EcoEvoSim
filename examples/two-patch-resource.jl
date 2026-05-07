@@ -1,6 +1,7 @@
 using EcoEvoSim
 using Plots
-using DifferentialEquations
+using OrdinaryDiffEq
+using SteadyStateDiffEq
 using Distributions
 using Random
 
@@ -15,9 +16,7 @@ function patchMortality(community, d, theta, sigma, beta, eta, chi)
     m_base = (beta * eta) / chi  # Baseline mortality rate
     mort = zeros(nSpecies, length(y))
     for i in 1:nSpecies
-        # Extract scalar trait value (handle both scalar and vector traits)
-        z_i = spTraits[i] isa Vector ? spTraits[i][1] : spTraits[i]
-        niche_benefit = theta .* pdf.(Normal.(y, sigma), z_i)
+        niche_benefit = theta .* pdf.(Normal.(y, sigma), spTraits[i][1])
         mort[i, :] = m_base .- niche_benefit
     end
     return mort

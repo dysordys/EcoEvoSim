@@ -47,7 +47,6 @@ config = EcoEvoConfig(
     ecoDyn = lotkaVolterra(growthFn, kernelFn),
     mutationGenerator = (x) -> x .+ 0.01,
     integrationParams = IntegrationParams(maxTime = 50.0),
-    invaderPopsize = 0.001,
     extThreshold = 0.003
 )
 

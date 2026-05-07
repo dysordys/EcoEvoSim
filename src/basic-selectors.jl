@@ -112,24 +112,24 @@ function popsizes(comm::Community, i::Integer)
     1 <= i <= numSp || throw(ArgumentError(
         "Species index $i out of bounds (community has $numSp species)"
     ))
-    speciesList(comm)[i].popsize[1].popsize
+    speciesList(comm)[i].popsize.popsize
 end
 
 
 function popsizes(comm::Community)
-    [sp.popsize[1].popsize for sp in speciesList(comm)]
+    [sp.popsize.popsize for sp in speciesList(comm)]
 end
 
 
 function popsizes(comm::Community, indices)
     speciesVec = speciesList(comm)
     numSp = length(speciesVec)
-    result = Vector{typeof(speciesVec[1].popsize[1].popsize)}()
+    result = Vector{typeof(speciesVec[1].popsize.popsize)}()
     for i in indices
         1 <= i <= numSp || throw(ArgumentError(
             "Species index $i out of bounds (community has $numSp species)"
         ))
-        push!(result, speciesVec[i].popsize[1].popsize)
+        push!(result, speciesVec[i].popsize.popsize)
     end
     return result
 end
@@ -241,24 +241,24 @@ function traits(comm::Community, i::Integer)
     1 <= i <= numSp || throw(ArgumentError(
         "Species index $i out of bounds (community has $numSp species)"
     ))
-    speciesList(comm)[i].trait[1].trait
+    speciesList(comm)[i].trait.trait
 end
 
 
 function traits(comm::Community)
-    [sp.trait[1].trait for sp in speciesList(comm)]
+    [sp.trait.trait for sp in speciesList(comm)]
 end
 
 
 function traits(comm::Community, indices)
     speciesVec = speciesList(comm)
     numSp = length(speciesVec)
-    result = Vector{typeof(speciesVec[1].trait[1].trait)}()
+    result = Vector{typeof(speciesVec[1].trait.trait)}()
     for i in indices
         1 <= i <= numSp || throw(ArgumentError(
             "Species index $i out of bounds (community has $numSp species)"
         ))
-        push!(result, speciesVec[i].trait[1].trait)
+        push!(result, speciesVec[i].trait.trait)
     end
     return result
 end

@@ -2,8 +2,8 @@
 
 using Distributions
 using LinearAlgebra
-using DifferentialEquations
-using Pipe
+using OrdinaryDiffEq
+using SteadyStateDiffEq
 
 
 """
@@ -132,7 +132,7 @@ function unpackCommunity(community::Community{T, AuxClasses}) where {T<:Real, Au
 
     # Add all population sizes (flattened across species and stage classes)
     for sp in speciesList(community)
-        append!(u0, sp.popsize[1].popsize)
+        append!(u0, sp.popsize.popsize)
     end
 
     # Add auxiliary variables
@@ -162,9 +162,9 @@ function packCommunity(
 
     # Reconstruct each species
     for sp in speciesList(community)
-        stageClasses = length(sp.popsize[1].popsize)
+        stageClasses = length(sp.popsize.popsize)
         newPopsize = PopulationSize(u[idx:idx+stageClasses-1])
-        newSpecies_i = Species(newPopsize, sp.trait[1])
+        newSpecies_i = Species(newPopsize, sp.trait)
         push!(newSpecies, newSpecies_i)
         idx += stageClasses
     end
@@ -206,24 +206,17 @@ function ecoDyn(
     # Check if we're using a steady-state solver
     alg = config.integrationParams.algorithm
     if alg isa DynamicSS
-        # For steady-state integration, use ODEProblem with a callback that terminates
-        # when the solution reaches steady state (i.e., when derivatives are near zero)
-        tspan = (community.time, community.time + config.integrationParams.maxTime)
-        prob = ODEProblem(ode_fn, u0, tspan)
-
-        # Get the inner ODE solver and tolerances from the algorithm
-        # If no inner algorithm is specified, use a robust default
+        # For steady-state integration, use SteadyStateProblem with DynamicSS.
+        # Build an effective DynamicSS with an explicit inner ODE solver; if none
+        # was provided by the user, fall back to Rodas5().
         inner_alg = alg.alg === nothing ? Rodas5() : alg.alg
-
-        # Get tolerances for steady-state detection
-        abstol = get(config.integrationParams.solver_options, :abstol, 1e-8)
-        reltol = get(config.integrationParams.solver_options, :reltol, 1e-6)
-
-        # Use the ODE solver with steady-state termination callback
-        sol = solve(prob, inner_alg; config.integrationParams.solver_options...,
-                    callback = TerminateSteadyState(abstol, reltol))
-        u_final = sol.u[end]
-        t_final = sol.t[end]
+        maxTime = config.integrationParams.maxTime
+        effective_alg = isfinite(maxTime) ? DynamicSS(inner_alg; tspan = maxTime) :
+                                            DynamicSS(inner_alg)
+        prob = SteadyStateProblem(ode_fn, u0)
+        sol = solve(prob, effective_alg; config.integrationParams.solver_options...)
+        u_final = sol.u
+        t_final = community.time
     elseif alg isa SSRootfind
         # SSRootfind uses initial conditions as a starting guess for rootfinding
         prob = SteadyStateProblem(ode_fn, u0)
@@ -290,17 +283,8 @@ end
 
 # User-facing factory functions (return Community -> Community closures)
 
-"""
-    generateMutant(; invaderPopsize, covMat=nothing, variance=nothing)
-
-Factory: return a mutation generator with uniform random parent selection.
-Returns a function `Community -> Community` suitable for the `mutationGenerator`
-field of `EcoEvoConfig`.
-
-Specify either `covMat` (full covariance matrix) or `variance` (diagonal covariance).
-Argument validation (excluding covariance matrix dimension) occurs at factory creation time.
-"""
-function generateMutant(;
+# Shared helper — reduces the four factory bodies to one place
+function _makeMutantFactory(workerFn, selectionFn;
     invaderPopsize::Real,
     covMat::Union{AbstractMatrix{<:Real}, Nothing} = nothing,
     variance::Union{Real, Nothing} = nothing
@@ -314,14 +298,25 @@ function generateMutant(;
         variance > 0 || throw(ArgumentError("variance must be positive"))
     end
     return function(community::Community{T, AuxClasses}) where {T<:Real, AuxClasses}
-        if covMat !== nothing
-            generateMutant(community, T(invaderPopsize), Matrix{T}(covMat), randomSpecies)
-        else
-            covMat_computed = Matrix{T}(T(variance) * I(traitSpaceDim(community)))
-            generateMutant(community, T(invaderPopsize), covMat_computed, randomSpecies)
-        end
+        cov = covMat !== nothing ?
+            Matrix{T}(covMat) :
+            Matrix{T}(T(variance) * I(traitSpaceDim(community)))
+        workerFn(community, T(invaderPopsize), cov, selectionFn)
     end
 end
+
+
+"""
+    generateMutant(; invaderPopsize, covMat=nothing, variance=nothing)
+
+Factory: return a mutation generator with uniform random parent selection.
+Returns a function `Community -> Community` suitable for the `mutationGenerator`
+field of `EcoEvoConfig`.
+
+Specify either `covMat` (full covariance matrix) or `variance` (diagonal covariance).
+Argument validation (excluding covariance matrix dimension) occurs at factory creation time.
+"""
+generateMutant(; kw...) = _makeMutantFactory(generateMutant, randomSpecies; kw...)
 
 
 """
@@ -334,28 +329,7 @@ field of `EcoEvoConfig`.
 Specify either `covMat` (full covariance matrix) or `variance` (diagonal covariance).
 Argument validation (excluding covariance matrix dimension) occurs at factory creation time.
 """
-function generateMutantWeighted(;
-    invaderPopsize::Real,
-    covMat::Union{AbstractMatrix{<:Real}, Nothing} = nothing,
-    variance::Union{Real, Nothing} = nothing
-)
-    if covMat !== nothing && variance !== nothing
-        throw(ArgumentError("Specify either covMat or variance, not both"))
-    elseif covMat === nothing && variance === nothing
-        throw(ArgumentError("Specify either covMat or variance"))
-    end
-    if variance !== nothing
-        variance > 0 || throw(ArgumentError("variance must be positive"))
-    end
-    return function(community::Community{T, AuxClasses}) where {T<:Real, AuxClasses}
-        if covMat !== nothing
-            generateMutant(community, T(invaderPopsize), Matrix{T}(covMat), weightedRandomSpecies)
-        else
-            covMat_computed = Matrix{T}(T(variance) * I(traitSpaceDim(community)))
-            generateMutant(community, T(invaderPopsize), covMat_computed, weightedRandomSpecies)
-        end
-    end
-end
+generateMutantWeighted(; kw...) = _makeMutantFactory(generateMutant, weightedRandomSpecies; kw...)
 
 
 # Spatial mutant generation - for populations with explicit spatial structure
@@ -402,7 +376,7 @@ function generateMutantSpatial(
     # This is used to determine probability of mutant appearing in each patch
     patchPopulations = zeros(T, nPatches)
     for sp in speciesList(community)
-        patchPopulations .+= sp.popsize[1].popsize
+        patchPopulations .+= sp.popsize.popsize
     end
 
     # Check that at least one patch has positive population
@@ -450,39 +424,16 @@ Argument validation (excluding covariance matrix dimension) occurs at factory cr
 
 # Example
 ```julia
-# Create a spatially-structured community (2 patches, 1 species with density in each)
-comm = Community([1.0, 1.0], [0.0])
+# Create a spatially-structured community (1 species with density in 2 patches)
+comm = Community([1.0 1.0], [0.0])
 
 # Create generator and apply it
 gen = generateMutantSpatial(invaderPopsize=0.001, variance=0.01^2)
 mutant_comm = gen(comm)
 ```
 """
-function generateMutantSpatial(;
-    invaderPopsize::Real,
-    covMat::Union{AbstractMatrix{<:Real}, Nothing} = nothing,
-    variance::Union{Real, Nothing} = nothing
-)
-    if covMat !== nothing && variance !== nothing
-        throw(ArgumentError("Specify either covMat or variance, not both"))
-    elseif covMat === nothing && variance === nothing
-        throw(ArgumentError("Specify either covMat or variance"))
-    end
-    if variance !== nothing
-        variance > 0 || throw(ArgumentError("variance must be positive"))
-    end
-    return function(community::Community{T, AuxClasses}) where {T<:Real, AuxClasses}
-        if covMat !== nothing
-            generateMutantSpatial(community, T(invaderPopsize), Matrix{T}(covMat), randomSpecies)
-        else
-            covMat_computed = Matrix{T}(T(variance) * I(traitSpaceDim(community)))
-            generateMutantSpatial(community, T(invaderPopsize), covMat_computed, randomSpecies)
-        end
-    end
-end
+generateMutantSpatial(; kw...) = _makeMutantFactory(generateMutantSpatial, randomSpecies; kw...)
 
-
-# Population-weighted spatial mutant generation
 
 """
     generateMutantSpatialWeighted(; invaderPopsize, covMat=nothing, variance=nothing)
@@ -500,36 +451,15 @@ Argument validation (excluding covariance matrix dimension) occurs at factory cr
 
 # Example
 ```julia
-# Create a spatially-structured community with unequal species abundances
-comm = Community([[1.0, 1.0], [10.0, 10.0]], [0.0, 0.3])  # 2 species, 2 patches
+# Create a spatially-structured community with unequal species abundances (2 species, 2 patches)
+comm = Community([1.0 1.0; 10.0 10.0], [0.0, 0.3])
 
 # Create generator and apply it
 gen = generateMutantSpatialWeighted(invaderPopsize=0.001, variance=0.01^2)
 mutant_comm = gen(comm)
 ```
 """
-function generateMutantSpatialWeighted(;
-    invaderPopsize::Real,
-    covMat::Union{AbstractMatrix{<:Real}, Nothing} = nothing,
-    variance::Union{Real, Nothing} = nothing
-)
-    if covMat !== nothing && variance !== nothing
-        throw(ArgumentError("Specify either covMat or variance, not both"))
-    elseif covMat === nothing && variance === nothing
-        throw(ArgumentError("Specify either covMat or variance"))
-    end
-    if variance !== nothing
-        variance > 0 || throw(ArgumentError("variance must be positive"))
-    end
-    return function(community::Community{T, AuxClasses}) where {T<:Real, AuxClasses}
-        if covMat !== nothing
-            generateMutantSpatial(community, T(invaderPopsize), Matrix{T}(covMat), weightedRandomSpecies)
-        else
-            covMat_computed = Matrix{T}(T(variance) * I(traitSpaceDim(community)))
-            generateMutantSpatial(community, T(invaderPopsize), covMat_computed, weightedRandomSpecies)
-        end
-    end
-end
+generateMutantSpatialWeighted(; kw...) = _makeMutantFactory(generateMutantSpatial, weightedRandomSpecies; kw...)
 
 
 """
@@ -557,10 +487,10 @@ function singleEvoStep(
         config::EcoEvoConfig{T}
     ) where {T<:Real, AuxClasses}
 
-    @pipe community |>
-        config.mutationGenerator(_) |>
-        ecoDyn(_, config) |>
-        removeExtinct(_, config.extThreshold)
+    community |>
+        config.mutationGenerator |>
+        c -> ecoDyn(c, config) |>
+        c -> removeExtinct(c, config.extThreshold)
 end
 
 
@@ -664,7 +594,6 @@ julia> config = EcoEvoConfig(
            ecoDyn = lotkaVolterra(growthFn, kernelFn),
            mutationGenerator = generateMutant(invaderPopsize=0.001, variance=0.002^2),
            integrationParams = IntegrationParams(maxTime = 1.0e8),
-           invaderPopsize = 0.001,
            extThreshold = 0.003
        );
 
@@ -721,7 +650,6 @@ julia> config = EcoEvoConfig(
            ecoDyn = lotkaVolterra(growthFn, kernelFn),
            mutationGenerator = generateMutant(invaderPopsize=0.001, variance=0.002^2),
            integrationParams = IntegrationParams(maxTime = 1.0e8),
-           invaderPopsize = 0.001,
            extThreshold = 0.003
        );
 

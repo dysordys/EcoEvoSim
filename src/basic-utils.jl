@@ -19,6 +19,11 @@ n = length(history)  # Number of snapshots in history
 """
 Base.length(h::EvoHistory) = length(historyList(h))
 
+Base.getindex(h::EvoHistory, i::Integer) = historyList(h, i)
+Base.getindex(h::EvoHistory, indices) = EvoHistory(historyList(h, indices))
+Base.iterate(h::EvoHistory, state=1) =
+    state > length(h) ? nothing : (historyList(h, state), state + 1)
+
 
 
 # Filter evolutionary histories
@@ -241,7 +246,7 @@ comm = Community([1.0, 2.0, 3.0], [0.1, 0.2, 0.3], Float64[])
 comm2 = changePopsizes(comm, [2.0, 3.0, 4.0])
 
 # Multiple stage classes (2 species, 2 stage classes each)
-comm_stages = Community(Species([1.0, 2.0], [0.1, 0.2]), emptyCommunity().aux, 0.0)
+comm_stages = Community([1.0 2.0; 3.0 4.0], [0.1, 0.2])
 comm2 = changePopsizes(comm_stages, [1.5 2.5; 3.5 4.5])
 ```
 """
@@ -265,7 +270,7 @@ function changePopsizes(
     newSpecies = Species{T}[]
     for i in 1:numSp
         newPopsize = PopulationSize(newPopsizes[i])
-        newSp = Species{T}([newPopsize], oldSpecies[i].trait)
+        newSp = Species{T}(newPopsize, oldSpecies[i].trait)
         push!(newSpecies, newSp)
     end
 
@@ -293,7 +298,7 @@ function changePopsizes(
     newSpecies = Species{T}[]
     for i in 1:numSp
         newPopsize = PopulationSize(Vector{T}(newPopsizes[i, :]))
-        newSp = Species{T}([newPopsize], oldSpecies[i].trait)
+        newSp = Species{T}(newPopsize, oldSpecies[i].trait)
         push!(newSpecies, newSp)
     end
 
@@ -325,7 +330,7 @@ comm = Community([1.0, 2.0, 3.0], [0.1, 0.2, 0.3], Float64[])
 comm2 = changeTraits(comm, [0.15, 0.25, 0.35])
 
 # Multidimensional trait space (2 species, 2 trait dimensions)
-comm_multi = Community([1.0, 2.0], [[0.1, 0.5], [0.2, 0.6]])
+comm_multi = Community([1.0, 2.0], [0.1 0.5; 0.2 0.6])
 comm2 = changeTraits(comm_multi, [0.15 0.55; 0.25 0.65])
 ```
 """
@@ -349,7 +354,7 @@ function changeTraits(
     newSpecies = Species{T}[]
     for i in 1:numSp
         newTrait = Phenotype(newTraits[i])
-        newSp = Species{T}(oldSpecies[i].popsize, [newTrait])
+        newSp = Species{T}(oldSpecies[i].popsize, newTrait)
         push!(newSpecies, newSp)
     end
 
@@ -377,7 +382,7 @@ function changeTraits(
     newSpecies = Species{T}[]
     for i in 1:numSp
         newTrait = Phenotype(Vector{T}(newTraits[i, :]))
-        newSp = Species{T}(oldSpecies[i].popsize, [newTrait])
+        newSp = Species{T}(oldSpecies[i].popsize, newTrait)
         push!(newSpecies, newSp)
     end
 
@@ -433,9 +438,9 @@ function selectTraitDim(
     oldSpecies = speciesList(comm)
     newSpecies = Species{T}[]
     for sp in oldSpecies
-        traitVec = sp.trait[1].trait  # Get the trait vector
+        traitVec = sp.trait.trait  # Get the trait vector
         selectedTrait = Phenotype(traitVec[dimIndex])  # Extract single dimension
-        newSp = Species{T}(sp.popsize, [selectedTrait])
+        newSp = Species{T}(sp.popsize, selectedTrait)
         push!(newSpecies, newSp)
     end
 
@@ -499,10 +504,10 @@ function selectTraitDim(
     oldSpecies = speciesList(comm)
     newSpecies = Species{T}[]
     for sp in oldSpecies
-        traitVec = sp.trait[1].trait  # Get the trait vector
+        traitVec = sp.trait.trait  # Get the trait vector
         selectedTraits = [traitVec[i] for i in dimIndices]  # Extract selected dimensions
         newTrait = Phenotype(selectedTraits)
-        newSp = Species{T}(sp.popsize, [newTrait])
+        newSp = Species{T}(sp.popsize, newTrait)
         push!(newSpecies, newSp)
     end
 

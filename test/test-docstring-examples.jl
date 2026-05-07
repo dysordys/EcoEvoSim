@@ -1,7 +1,10 @@
 using EcoEvoSim
 using Test
 using Random
-using DifferentialEquations
+using OrdinaryDiffEq
+using SteadyStateDiffEq
+using Plots
+using Distributions
 
 @testset "Docstring Examples" begin
 
@@ -91,6 +94,22 @@ using DifferentialEquations
         comm4 = Community([0.001, 2.0, 0.005], [0.1, 0.2, 0.3], Float64[])
         extinct_indices = speciesBelowThreshold(comm4, 0.01)
         @test extinct_indices == [1, 3]
+
+        # numStages examples
+        comm_stages = Community([1.0 2.0; 3.0 4.0], [0.1, 0.2], Float64[])
+        nstages = numStages(comm_stages)
+        @test nstages == 2
+
+        # historyList examples
+        hist_comms = [Community([1.0 * i, 2.0 * i], [0.1, 0.2], Float64[]) for i in 1:5]
+        test_hist = EvoHistory(hist_comms)
+        all_communities = historyList(test_hist)
+        @test all_communities isa Vector
+        @test length(all_communities) == 5
+        single_snap = historyList(test_hist, 3)
+        @test single_snap isa Community
+        subset_snaps = historyList(test_hist, [1, 3, 5])
+        @test length(subset_snaps) == 3
     end
 
     @testset "Basic Utils" begin
@@ -127,6 +146,59 @@ using DifferentialEquations
         sorted_comm = orderByTrait(comm)
         @test traits(sorted_comm, 1) == [0.1]
         @test traits(sorted_comm, 3) == [0.3]
+
+        # orderByTrait with dimension argument
+        comm_2d = Community([1.0, 2.0], [0.5 0.9; 0.3 0.7])
+        sorted_2d = orderByTrait(comm_2d, 2)  # Sort by second trait dimension
+        @test traits(sorted_2d, 1)[2] < traits(sorted_2d, 2)[2]
+
+        # length(EvoHistory) examples
+        simple_hist = EvoHistory([Community([1.0], [0.1], Float64[]),
+                                   Community([1.1], [0.1], Float64[])])
+        @test length(simple_hist) == 2
+
+        # filterHistory examples
+        filt_comms = [Community([Float64(i)], [0.1], Float64[]) for i in 1:10]
+        filt_hist = EvoHistory(filt_comms)
+
+        filtered_fn = filterHistory(filt_hist, i -> isodd(i))
+        @test length(filtered_fn) == 5
+
+        filtered_idx = filterHistory(filt_hist, [1, 5, 10])
+        @test length(filtered_idx) == 3
+
+        filtered_range = filterHistory(filt_hist, 3:7)
+        @test length(filtered_range) == 5
+
+        filtered_step = filterHistory(filt_hist, 2)  # every other snapshot
+        @test length(filtered_step) == 5
+
+        # changePopsizes matrix variant (multiple stage classes)
+        comm_stages = Community([1.0 2.0; 3.0 4.0], [0.1, 0.2])
+        comm_stages2 = changePopsizes(comm_stages, [1.5 2.5; 3.5 4.5])
+        @test popsizes(comm_stages2, 1) == [1.5, 2.5]
+        @test popsizes(comm_stages2, 2) == [3.5, 4.5]
+
+        # changeTraits multidimensional variant
+        comm_multi_trait = Community([1.0, 2.0], [0.1 0.5; 0.2 0.6])
+        comm_mt2 = changeTraits(comm_multi_trait, [0.15 0.55; 0.25 0.65])
+        @test traits(comm_mt2, 1) == [0.15, 0.55]
+        @test traits(comm_mt2, 2) == [0.25, 0.65]
+
+        # selectTraitDim single dimension
+        comm_2dtrait = Community([1.0, 2.0], [0.3 0.5; 0.1 0.8])
+        comm_1dtrait = selectTraitDim(comm_2dtrait, 1)
+        @test traitSpaceDim(comm_1dtrait) == 1
+        @test traits(comm_1dtrait, 1) == [0.3]
+        comm_2nd = selectTraitDim(comm_2dtrait, 2)
+        @test traits(comm_2nd, 1) == [0.5]
+
+        # selectTraitDim multiple dimensions
+        comm_4dtrait = Community([1.0, 2.0], [0.1 0.2 0.3 0.4; 0.5 0.6 0.7 0.8])
+        comm_2dtrait2 = selectTraitDim(comm_4dtrait, [1, 3])
+        @test traitSpaceDim(comm_2dtrait2) == 2
+        @test traits(comm_2dtrait2, 1) == [0.1, 0.3]
+        @test traits(comm_2dtrait2, 2) == [0.5, 0.7]
     end
 
     @testset "Eco-Evo Configuration" begin
@@ -205,6 +277,20 @@ using DifferentialEquations
         comm_new = Community([1.0, 1.0], [0.1, 0.2], Float64[])
         history2 = EcoEvoSim.evolve!(comm_new, config, 5, showProgress=false)
         @test length(history2.history) == 6
+
+        # generateMutantSpatial examples (1 species, 2 patches)
+        Random.seed!(42)
+        spatial_comm = Community([1.0 1.0], [0.0])
+        gen_spatial = generateMutantSpatial(invaderPopsize=0.001, variance=0.01^2)
+        mutant_spatial = gen_spatial(spatial_comm)
+        @test numSpecies(mutant_spatial) == 2
+
+        # generateMutantSpatialWeighted examples (2 species, 2 patches each)
+        Random.seed!(42)
+        spatial_comm2 = Community([1.0 1.0; 10.0 10.0], [0.0, 0.3])
+        gen_spatial_w = generateMutantSpatialWeighted(invaderPopsize=0.001, variance=0.01^2)
+        mutant_spatial2 = gen_spatial_w(spatial_comm2)
+        @test numSpecies(mutant_spatial2) == 3
     end
 
     @testset "Models" begin
@@ -221,8 +307,47 @@ using DifferentialEquations
             extThreshold = 0.003
         )
 
-result = ecoDyn(community, config)
+        result = ecoDyn(community, config)
         @test result isa Community
+
+        # unstructuredModel examples
+        r_fn(z) = 1 - sum(z.^2)
+        α_fn(zi, zj) = exp(-sum((zi .- zj).^2) / 0.04)
+
+        ecology_unstr = unstructuredModel() do i, n, z, nSpecies
+            n[i] * (r_fn(z[i]) - sum(α_fn(z[i], z[j]) * n[j] for j in 1:nSpecies))
+        end
+        @test ecology_unstr isa Function
+
+        ecology_unstr_pre = unstructuredModel(
+            precompute = (z, nSpecies) -> (
+                b = [r_fn(z[i]) for i in 1:nSpecies],
+                A = [α_fn(z[i], z[j]) for i in 1:nSpecies, j in 1:nSpecies]
+            )
+        ) do i, n, z, nSpecies, pre
+            n[i] * (pre.b[i] - sum(pre.A[i, j] * n[j] for j in 1:nSpecies))
+        end
+        @test ecology_unstr_pre isa Function
+
+        # structuredModel examples (requires Distributions)
+        d_val = 1.0; mu_val = 0.1; alpha_val = 1.0
+        y_val = [d_val / 2, -d_val / 2]
+
+        ecology_str = structuredModel() do i, j, N, z, R, nSpecies, nPatches
+            growth = pdf(Normal(0, 1), z[i][1] - y_val[j])
+            dd = alpha_val * sum(N[k, j] for k in 1:nSpecies)
+            (growth - dd - mu_val) * N[i, j] + mu_val * sum(N[i, k] for k in 1:nPatches if k != j)
+        end
+        @test ecology_str isa Function
+
+        ecology_str_pre = structuredModel(
+            precompute = (z, nSpecies, nPatches) ->
+                [pdf(Normal(0, 1), z[i][1] - y_val[j]) for i in 1:nSpecies, j in 1:nPatches]
+        ) do i, j, N, z, R, nSpecies, nPatches, pre
+            dd = alpha_val * sum(N[k, j] for k in 1:nSpecies)
+            (pre[i, j] - dd - mu_val) * N[i, j] + mu_val * sum(N[i, k] for k in 1:nPatches if k != j)
+        end
+        @test ecology_str_pre isa Function
     end
 
     @testset "Visualization" begin

@@ -26,24 +26,24 @@ function Species(
         popsize::PopulationSize{T},
         phenotype::Phenotype{T}
     ) where {T<:Real}
-    Species{T}([popsize], [phenotype])
+    Species{T}(popsize, phenotype)
 end
 
 
 Species(popsizeVal::T, traitVal::T) where {T<:Real} =
-    Species{T}([PopulationSize(popsizeVal)], [Phenotype(traitVal)])
+    Species{T}(PopulationSize(popsizeVal), Phenotype(traitVal))
 
 
 Species(popsizeVec::AbstractVector{T}, traitVal::T) where {T<:Real} =
-    Species{T}([PopulationSize(popsizeVec)], [Phenotype(traitVal)])
+    Species{T}(PopulationSize(popsizeVec), Phenotype(traitVal))
 
 
 Species(popsizeVal::T, traitVec::AbstractVector{T}) where {T<:Real} =
-    Species{T}([PopulationSize(popsizeVal)], [Phenotype(traitVec)])
+    Species{T}(PopulationSize(popsizeVal), Phenotype(traitVec))
 
 
 Species(popsizeVec::AbstractVector{T}, traitVec::AbstractVector{T}) where {T<:Real} =
-    Species{T}([PopulationSize(popsizeVec)], [Phenotype(traitVec)])
+    Species{T}(PopulationSize(popsizeVec), Phenotype(traitVec))
 
 
 function Species(popMat::AbstractMatrix{T}, traitMat::AbstractMatrix{T}) where {T<:Real}
@@ -51,8 +51,8 @@ function Species(popMat::AbstractMatrix{T}, traitMat::AbstractMatrix{T}) where {
     n_species == size(traitMat, 1) ||
         throw(ArgumentError("popMat and traitMat must have the same number of rows (species)"))
     [Species{T}(
-        [PopulationSize{T}(Vector{T}(popMat[i, :]))],
-        [Phenotype{T}(Vector{T}(traitMat[i, :]))]
+        PopulationSize{T}(Vector{T}(popMat[i, :])),
+        Phenotype{T}(Vector{T}(traitMat[i, :]))
     ) for i in 1:n_species]
 end
 
@@ -64,7 +64,7 @@ function Species(
     n_species == length(traitVecs) ||
         throw(ArgumentError("popVecs and traitVecs must have the same length"))
     [
-        Species{T}([PopulationSize(popVecs[i])], [Phenotype(traitVecs[i])])
+        Species{T}(PopulationSize(popVecs[i]), Phenotype(traitVecs[i]))
         for i in 1:n_species
     ]
 end
@@ -116,8 +116,8 @@ function Community(
         throw(ArgumentError("`popVals` and `traitVals` must have the same length"))
     # Create vector of species where each species has one stage class and one trait value
     species = [Species{T}(
-        [PopulationSize{T}([popVals[i]])],
-        [Phenotype{T}([traitVals[i]])]
+        PopulationSize{T}([popVals[i]]),
+        Phenotype{T}([traitVals[i]])
     ) for i in eachindex(popVals)]
     Community{T, 0}(species, PopulationSize{T}[], zero(T))
 end
@@ -132,8 +132,8 @@ function Community(
         throw(ArgumentError("`popVals` and `traitVals` must have the same length"))
     # Create vector of species where each species has one stage class and one trait value
     species = [Species{T}(
-        [PopulationSize{T}([popVals[i]])],
-        [Phenotype{T}([traitVals[i]])]
+        PopulationSize{T}([popVals[i]]),
+        Phenotype{T}([traitVals[i]])
     ) for i in eachindex(popVals)]
     aux = isempty(auxVals) ? PopulationSize{T}[] : [PopulationSize{T}(auxVals)]
     AuxClasses = length(aux)
@@ -154,8 +154,8 @@ function Community(
     # Create vector of species where each species has stage classes from a row of popMat
     # and a single trait value from traitVec
     species = [Species{T}(
-        [PopulationSize{T}(Vector{T}(popMat[i, :]))],
-        [Phenotype{T}([traitVec[i]])]
+        PopulationSize{T}(Vector{T}(popMat[i, :])),
+        Phenotype{T}([traitVec[i]])
     ) for i in 1:n_species]
     Community{T, 0}(species, PopulationSize{T}[], zero(T))
 end
@@ -173,8 +173,8 @@ function Community(
     # Create vector of species where each species has stage classes from a row of popMat
     # and a single trait value from traitVec
     species = [Species{T}(
-        [PopulationSize{T}(Vector{T}(popMat[i, :]))],
-        [Phenotype{T}([traitVec[i]])]
+        PopulationSize{T}(Vector{T}(popMat[i, :])),
+        Phenotype{T}([traitVec[i]])
     ) for i in 1:n_species]
     aux = isempty(auxVals) ? PopulationSize{T}[] : [PopulationSize{T}(auxVals)]
     AuxClasses = length(aux)
@@ -193,8 +193,8 @@ function Community(
     # Create vector of species where each species has a single population value
     # and trait dimensions from a row of traitMat
     species = [Species{T}(
-        [PopulationSize{T}([popVec[i]])],
-        [Phenotype{T}(Vector{T}(traitMat[i, :]))]
+        PopulationSize{T}([popVec[i]]),
+        Phenotype{T}(Vector{T}(traitMat[i, :]))
     ) for i in 1:n_species]
     Community{T, 0}(species, PopulationSize{T}[], zero(T))
 end
@@ -212,8 +212,8 @@ function Community(
     # Create vector of species where each species has a single population value
     # and trait dimensions from a row of traitMat
     species = [Species{T}(
-        [PopulationSize{T}([popVec[i]])],
-        [Phenotype{T}(Vector{T}(traitMat[i, :]))]
+        PopulationSize{T}([popVec[i]]),
+        Phenotype{T}(Vector{T}(traitMat[i, :]))
     ) for i in 1:n_species]
     aux = isempty(auxVals) ? PopulationSize{T}[] : [PopulationSize{T}(auxVals)]
     AuxClasses = length(aux)
@@ -231,8 +231,8 @@ function Community(
     # Create vector of species where each species has stage classes from a row of popMat
     # and trait dimensions from a row of traitMat
     species = [Species{T}(
-        [PopulationSize{T}(Vector{T}(popMat[i, :]))],
-        [Phenotype{T}(Vector{T}(traitMat[i, :]))]
+        PopulationSize{T}(Vector{T}(popMat[i, :])),
+        Phenotype{T}(Vector{T}(traitMat[i, :]))
     ) for i in 1:n_species]
     Community{T, 0}(species, PopulationSize{T}[], zero(T))
 end
@@ -249,8 +249,8 @@ function Community(
     # Create vector of species where each species has stage classes from a row of popMat
     # and trait dimensions from a row of traitMat
     species = [Species{T}(
-        [PopulationSize{T}(Vector{T}(popMat[i, :]))],
-        [Phenotype{T}(Vector{T}(traitMat[i, :]))]
+        PopulationSize{T}(Vector{T}(popMat[i, :])),
+        Phenotype{T}(Vector{T}(traitMat[i, :]))
     ) for i in 1:n_species]
     aux = isempty(auxVals) ? PopulationSize{T}[] : [PopulationSize{T}(auxVals)]
     AuxClasses = length(aux)

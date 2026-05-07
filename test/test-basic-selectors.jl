@@ -122,19 +122,19 @@ numTests = 50
             all_pops = popsizes(comm)
             @test length(all_pops) == numSpecies
             for i in 1:numSpecies
-                @test all_pops[i] === sps[i].popsize[1].popsize
+                @test all_pops[i] === sps[i].popsize.popsize
             end
 
             # Test single index
             for i in 1:numSpecies
-                @test popsizes(comm, i) === sps[i].popsize[1].popsize
+                @test popsizes(comm, i) === sps[i].popsize.popsize
             end
 
             # Test collection of indices
             if numSpecies >= 2
                 indices = [1, 2]
                 result = popsizes(comm, indices)
-                @test result == [sps[1].popsize[1].popsize, sps[2].popsize[1].popsize]
+                @test result == [sps[1].popsize.popsize, sps[2].popsize.popsize]
             end
         end
     end
@@ -158,7 +158,7 @@ numTests = 50
             M = popsizesToMatrix(comm)
             @test size(M) == (numSpecies, nstage)
             for i in 1:numSpecies, j in 1:nstage
-                @test M[i, j] == sps[i].popsize[1].popsize[j]
+                @test M[i, j] == sps[i].popsize.popsize[j]
             end
         end
 
@@ -191,19 +191,19 @@ numTests = 50
             all_traits = traits(comm)
             @test length(all_traits) == numSpecies
             for i in 1:numSpecies
-                @test all_traits[i] === sps[i].trait[1].trait
+                @test all_traits[i] === sps[i].trait.trait
             end
 
             # Test single index
             for i in 1:numSpecies
-                @test traits(comm, i) === sps[i].trait[1].trait
+                @test traits(comm, i) === sps[i].trait.trait
             end
 
             # Test collection of indices
             if numSpecies >= 2
                 indices = [1, 2]
                 result = traits(comm, indices)
-                @test result == [sps[1].trait[1].trait, sps[2].trait[1].trait]
+                @test result == [sps[1].trait.trait, sps[2].trait.trait]
             end
         end
     end

@@ -9,16 +9,8 @@ end
 
 
 function Base.show(io::IO, sp::Species)
-    if length(sp.popsize) == 1
-        density_vals = Vector(sp.popsize[1].popsize)
-    else
-        density_vals = [Vector(ps.popsize) for ps in sp.popsize]
-    end
-    if length(sp.trait) == 1
-        trait_vals = Vector(sp.trait[1].trait)
-    else
-        trait_vals = [Vector(ph.trait) for ph in sp.trait]
-    end
+    density_vals = Vector(sp.popsize.popsize)
+    trait_vals = Vector(sp.trait.trait)
     println(io, "- popsize:   $density_vals")
     println(io, "- phenotype: $trait_vals")
 end
@@ -39,4 +31,34 @@ function Base.show(
     for (j, aux) in enumerate(comm.aux)
         println(io, "  Auxiliary $j: $(aux)")
     end
+end
+
+
+function Base.show(io::IO, h::EvoHistory)
+    n = length(h)
+    if n == 0
+        print(io, "EvoHistory (empty)")
+        return
+    end
+    last_comm = h.history[end]
+    print(io, "EvoHistory ($n snapshot$(n == 1 ? "" : "s"), " *
+              "last: t = $(last_comm.time), $(numSpecies(last_comm)) species)")
+end
+
+
+function Base.show(io::IO, params::IntegrationParams)
+    println(io, "IntegrationParams:")
+    println(io, "  maxTime:   $(params.maxTime)")
+    println(io, "  algorithm: $(nameof(typeof(params.algorithm)))")
+    print(io,   "  options:   $(params.solver_options)")
+end
+
+
+function Base.show(io::IO, config::EcoEvoConfig)
+    println(io, "EcoEvoConfig:")
+    println(io, "  ecoDyn:       $(nameof(typeof(config.ecoDyn)))")
+    println(io, "  mutGenerator: $(nameof(typeof(config.mutationGenerator)))")
+    println(io, "  extThreshold: $(config.extThreshold)")
+    print(io,   "  integration:  ")
+    show(io, config.integrationParams)
 end

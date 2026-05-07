@@ -2,7 +2,8 @@ using Test
 using EcoEvoSim
 using LinearAlgebra
 using Random
-using DifferentialEquations
+using OrdinaryDiffEq
+using SteadyStateDiffEq
 
 
 numTests = 50
@@ -16,7 +17,7 @@ numTests = 50
         @test params.maxTime == 100.0
         @test params.solver_options.abstol == 1e-6
         @test params.solver_options.reltol == 1e-3
-        @test params.algorithm isa DifferentialEquations.Rodas5
+        @test params.algorithm isa Rodas5
 
         # Test with additional solver options
         params2 = IntegrationParams(maxTime=50.0, abstol=1e-8, reltol=1e-6, maxiters=10000)

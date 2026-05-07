@@ -1,6 +1,7 @@
 using EcoEvoSim
 using Plots
-using DifferentialEquations
+using OrdinaryDiffEq
+using SteadyStateDiffEq
 using Distributions
 using Random
 

@@ -3,7 +3,8 @@ using Plots
 using DataFrames
 using CSV
 using Random
-using DifferentialEquations
+using OrdinaryDiffEq
+using SteadyStateDiffEq
 
 
 growthFn(z) = (tanh(sum(z .- 0.5) / 0.2) + 1) / 2 - 0.006692851

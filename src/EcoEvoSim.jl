@@ -3,21 +3,18 @@ module EcoEvoSim
 using Random
 using Distributions
 using LinearAlgebra
-using DifferentialEquations
-using Plots
-using GLMakie
+using OrdinaryDiffEq
+using SteadyStateDiffEq
 using OrderedCollections
 
 
 include("basic-types.jl")
 include("basic-constructors.jl")
 include("basic-selectors.jl")
-include("show-methods.jl")
 include("basic-utils.jl")
 include("ecoevo.jl")
 include("models.jl")
-include("visualize.jl")
-include("visualize-interactive.jl")
+include("show-methods.jl")
 
 
 export PopulationSize, Phenotype, Species, Community, EvoHistory,
@@ -27,11 +24,19 @@ export PopulationSize, Phenotype, Species, Community, EvoHistory,
        removeSpecies, changePopsizes, changeTraits, orderByTrait, selectTraitDim,
        emptyCommunity, emptyEvoHistory, IntegrationParams, EcoEvoConfig,
        generateMutant, generateMutantWeighted, generateMutantSpatial,
-       generateMutantSpatialWeighted, ecoDyn, singleEvoStep,
+       generateMutantSpatialWeighted, noMutation, ecoDyn, singleEvoStep,
        evolve, unpackCommunity, packCommunity, lotkaVolterra,
        plotEvo, plotEvoTwoTrait, plotEvoTwoTraitInteractive,
        niceTickInterval, historyToTable, historyList, filterHistory,
        unstructuredModel, structuredModel
+
+
+# Stubs for the Plots extension — implemented when Plots is loaded
+function plotEvo end
+function plotEvoTwoTrait end
+
+# Stub for the GLMakie extension — implemented when GLMakie is loaded
+function plotEvoTwoTraitInteractive end
 
 
 end # module EcoEvoSim
