@@ -1,7 +1,5 @@
 using EcoEvoSim
 using Plots
-using OrdinaryDiffEq
-using SteadyStateDiffEq
 using Distributions
 using Random
 
@@ -74,7 +72,7 @@ config = EcoEvoConfig(
         maxTime = Inf,
         algorithm = DynamicSS(),
         abstol = 1e-10,
-        reltol = 1e-8
+        reltol = 1e-10
     ),
     extThreshold = 0.003
 )

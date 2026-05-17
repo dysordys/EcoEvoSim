@@ -28,7 +28,8 @@ export PopulationSize, Phenotype, Species, Community, EvoHistory,
        evolve, unpackCommunity, packCommunity, lotkaVolterra,
        plotEvo, plotEvoTwoTrait, plotEvoTwoTraitInteractive,
        niceTickInterval, historyToTable, historyList, filterHistory,
-       unstructuredModel, structuredModel
+       unstructuredModel, structuredModel,
+       DynamicSS, SSRootfind
 
 
 # Stubs for the Plots extension — implemented when Plots is loaded

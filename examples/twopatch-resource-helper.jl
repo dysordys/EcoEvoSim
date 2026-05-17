@@ -4,7 +4,6 @@
 using EcoEvoSim
 using Plots
 using OrdinaryDiffEq
-using SteadyStateDiffEq
 using Distributions
 using Random
 
