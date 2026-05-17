@@ -16,12 +16,12 @@ y = [d/2, -d/2]
 m_base = (beta * eta) / chi
 
 ecology = structuredModel(
-    auxDynamics = (R, N, z, nSpecies, nPatches) ->
-        [R[k] * (eta - chi * R[k]) - gamma * sum(N[i, k] for i in 1:nSpecies) * R[k]
+    auxDynamics = (aux, N, z, nSpecies, nPatches) ->
+        [aux[k] * (eta - chi * aux[k]) - gamma * sum(N[i, k] for i in 1:nSpecies) * aux[k]
          for k in 1:nPatches]
-) do i, j, N, z, R, nSpecies, nPatches
+) do i, j, N, z, aux, nSpecies, nPatches
     mort = m_base - theta * pdf(Normal(y[j], sigma), z[i][1])
-    (beta * R[j] - mort - mu) * N[i, j] + mu * sum(N[i, k] for k in 1:nPatches if k != j)
+    (beta * aux[j] - mort - mu) * N[i, j] + mu * sum(N[i, k] for k in 1:nPatches if k != j)
 end
 
 
@@ -33,7 +33,7 @@ config = EcoEvoConfig(
         maxTime = Inf,
         algorithm = DynamicSS(),
         abstol = 1e-10,
-        reltol = 1e-8
+        reltol = 1e-10
     ),
     extThreshold = 0.003
 )

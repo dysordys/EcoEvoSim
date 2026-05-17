@@ -205,7 +205,7 @@ end
         r(z) = 1.0 - sum(z.^2)
         α(zi, zj) = exp(-sum((zi .- zj).^2) / 0.04)
 
-        ecology = unstructuredModel() do i, n, z, nSpecies
+        ecology = unstructuredModel() do i, n, z, aux, nSpecies
             n[i] * (r(z[i]) - sum(α(z[i], z[j]) * n[j] for j in 1:nSpecies))
         end
 
@@ -226,7 +226,7 @@ end
         # dn/dt = n * r * (1 - n/K)
         r_val = 1.0; K = 10.0
 
-        ecology = unstructuredModel() do i, n, z, nSpecies
+        ecology = unstructuredModel() do i, n, z, aux, nSpecies
             n[i] * r_val * (1.0 - n[i] / K)
         end
 
@@ -251,7 +251,7 @@ end
 
         lv_factory = lotkaVolterra(growthFn, kernelFn)
 
-        ecology = unstructuredModel() do i, n, z, nSpecies
+        ecology = unstructuredModel() do i, n, z, aux, nSpecies
             n[i] * (growthFn(z[i]) + sum(kernelFn(z[i], z[j]) * n[j] for j in 1:nSpecies))
         end
 
@@ -266,7 +266,7 @@ end
 
 
     @testset "zero_population" begin
-        ecology = unstructuredModel() do i, n, z, nSpecies
+        ecology = unstructuredModel() do i, n, z, aux, nSpecies
             n[i] * (1.0 - n[i])
         end
 
@@ -280,7 +280,7 @@ end
 
 
     @testset "integration_with_EcoEvoConfig" begin
-        ecology = unstructuredModel() do i, n, z, nSpecies
+        ecology = unstructuredModel() do i, n, z, aux, nSpecies
             n[i] * (1.0 - sum(n[j] for j in 1:nSpecies))
         end
 
@@ -303,7 +303,7 @@ end
         kernelFn = (zi, zj) -> -exp(-sum((zi .- zj).^2) / 0.15^2)
 
         # Without precompute
-        ecology_plain = unstructuredModel() do i, n, z, nSpecies
+        ecology_plain = unstructuredModel() do i, n, z, aux, nSpecies
             n[i] * (growthFn(z[i]) + sum(kernelFn(z[i], z[j]) * n[j] for j in 1:nSpecies))
         end
 
@@ -313,7 +313,7 @@ end
                 b = [growthFn(z[i]) for i in 1:nSpecies],
                 A = [kernelFn(z[i], z[j]) for i in 1:nSpecies, j in 1:nSpecies]
             )
-        ) do i, n, z, nSpecies, pre
+        ) do i, n, z, aux, nSpecies, pre
             n[i] * (pre.b[i] + sum(pre.A[i, j] * n[j] for j in 1:nSpecies))
         end
 
@@ -338,7 +338,7 @@ end
                 b = [growthFn(z[i]) for i in 1:nSpecies],
                 A = [kernelFn(z[i], z[j]) for i in 1:nSpecies, j in 1:nSpecies]
             )
-        ) do i, n, z, nSpecies, pre
+        ) do i, n, z, aux, nSpecies, pre
             n[i] * (pre.b[i] + sum(pre.A[i, j] * n[j] for j in 1:nSpecies))
         end
 
@@ -356,17 +356,9 @@ end
         eta = 1.0; K = 10.0
 
         ecology = unstructuredModel(
-            auxDynamics = (R, n, z, nSpecies) ->
-                [eta * (K - R[1]) - sum(n[i] * R[1] for i in 1:nSpecies)]
-        ) do i, n, z, nSpecies
-            n[i] * (R_unused = 0.0; 1.0 - n[i])  # simple logistic, ignore R here
-        end
-
-        # Need R accessible in the do block — rewrite using the full signature
-        ecology = unstructuredModel(
-            auxDynamics = (R, n, z, nSpecies) ->
-                [eta * (K - R[1]) - sum(n[i] * R[1] for i in 1:nSpecies)]
-        ) do i, n, z, nSpecies
+            auxDynamics = (aux, n, z, nSpecies) ->
+                [eta * (K - aux[1]) - sum(n[i] * aux[1] for i in 1:nSpecies)]
+        ) do i, n, z, aux, nSpecies
             n[i] * (1.0 - n[i])
         end
 
@@ -392,12 +384,13 @@ end
         eta = 1.0; K = 10.0
 
         ecology = unstructuredModel(
-            auxDynamics = (R, n, z, nSpecies, pre) ->
-                [eta * (K - R[1]) - sum(pre.a[i] * n[i] * R[1] for i in 1:nSpecies)],
+            auxDynamics = (aux, n, z, nSpecies, pre) ->
+                [eta * (K - aux[1]) - sum(pre.a[i] * n[i] * aux[1] for i in 1:nSpecies)],
             precompute = (z, nSpecies) -> (
                 a = [1.0 + z[i][1]^2 for i in 1:nSpecies],
             )
-        ) do i, n, z, nSpecies, pre            pre.a[i] * n[i] * (1.0 - n[i])
+        ) do i, n, z, aux, nSpecies, pre
+            pre.a[i] * n[i] * (1.0 - n[i])
         end
 
         comm = Community([0.5, 0.3], [0.0, 1.0], [5.0])
@@ -426,7 +419,7 @@ end
         mu = 0.1; alpha_val = 1.0
         y = [0.5, -0.5]
 
-        ecology = structuredModel() do i, j, N, z, R, nSpecies, nPatches
+        ecology = structuredModel() do i, j, N, z, aux, nSpecies, nPatches
             growth = exp(-0.5 * (z[i][1] - y[j])^2)
             dd = alpha_val * sum(N[k, j] for k in 1:nSpecies)
             (growth - dd - mu) * N[i, j] + mu * sum(N[i, k] for k in 1:nPatches if k != j)
@@ -447,7 +440,7 @@ end
     @testset "two_species_two_patches" begin
         mu = 0.0  # no migration for simpler test
 
-        ecology = structuredModel() do i, j, N, z, R, nSpecies, nPatches
+        ecology = structuredModel() do i, j, N, z, aux, nSpecies, nPatches
             (1.0 - N[i, j]) * N[i, j]  # logistic per patch, independent
         end
 
@@ -474,7 +467,7 @@ end
         # With only migration (no growth), total population should be conserved
         mu = 0.5
 
-        ecology = structuredModel() do i, j, N, z, R, nSpecies, nPatches
+        ecology = structuredModel() do i, j, N, z, aux, nSpecies, nPatches
             -mu * N[i, j] + mu * sum(N[i, k] for k in 1:nPatches if k != j) / (nPatches - 1)
         end
 
@@ -493,11 +486,11 @@ end
         eta = 1.0; chi = 1.0; gamma = 1.0; beta = 1.0
 
         ecology = structuredModel(
-            auxDynamics = (R, N, z, nSpecies, nPatches) ->
-                [R[k] * (eta - chi * R[k]) - gamma * sum(N[i, k] for i in 1:nSpecies) * R[k]
+            auxDynamics = (aux, N, z, nSpecies, nPatches) ->
+                [aux[k] * (eta - chi * aux[k]) - gamma * sum(N[i, k] for i in 1:nSpecies) * aux[k]
                  for k in 1:nPatches]
-        ) do i, j, N, z, R, nSpecies, nPatches
-            (beta * R[j] - 1.0) * N[i, j]
+        ) do i, j, N, z, aux, nSpecies, nPatches
+            (beta * aux[j] - 1.0) * N[i, j]
         end
 
         comm = Community([1.0 1.0;], [0.0], [2.0, 3.0])
@@ -523,7 +516,7 @@ end
 
     @testset "no_auxDynamics_with_aux_vars" begin
         # Aux vars present but no auxDynamics — aux portion of du is untouched
-        ecology = structuredModel() do i, j, N, z, R, nSpecies, nPatches
+        ecology = structuredModel() do i, j, N, z, aux, nSpecies, nPatches
             (1.0 - N[i, j]) * N[i, j]
         end
 
@@ -542,7 +535,7 @@ end
     @testset "integration_with_EcoEvoConfig" begin
         mu = 0.1
 
-        ecology = structuredModel() do i, j, N, z, R, nSpecies, nPatches
+        ecology = structuredModel() do i, j, N, z, aux, nSpecies, nPatches
             growth = exp(-0.5 * (z[i][1] - 0.0)^2)
             (growth - mu) * N[i, j] + mu * sum(N[i, k] for k in 1:nPatches if k != j)
         end
@@ -567,7 +560,7 @@ end
         y = [0.5, -0.5]
 
         # Without precompute
-        ecology_plain = structuredModel() do i, j, N, z, R, nSpecies, nPatches
+        ecology_plain = structuredModel() do i, j, N, z, aux, nSpecies, nPatches
             growth = exp(-0.5 * (z[i][1] - y[j])^2)
             dd = alpha_val * sum(N[k, j] for k in 1:nSpecies)
             (growth - dd - mu) * N[i, j] + mu * sum(N[i, k] for k in 1:nPatches if k != j)
@@ -577,7 +570,7 @@ end
         ecology_pre = structuredModel(
             precompute = (z, nSpecies, nPatches) ->
                 [exp(-0.5 * (z[i][1] - y[j])^2) for i in 1:nSpecies, j in 1:nPatches]
-        ) do i, j, N, z, R, nSpecies, nPatches, pre
+        ) do i, j, N, z, aux, nSpecies, nPatches, pre
             dd = alpha_val * sum(N[k, j] for k in 1:nSpecies)
             (pre[i, j] - dd - mu) * N[i, j] + mu * sum(N[i, k] for k in 1:nPatches if k != j)
         end
@@ -596,13 +589,13 @@ end
         eta = 1.0; chi = 1.0; gamma = 1.0; beta = 1.0
 
         ecology = structuredModel(
-            auxDynamics = (R, N, z, nSpecies, nPatches, pre) ->
-                [R[k] * (eta - chi * R[k]) - gamma * sum(N[i, k] for i in 1:nSpecies) * R[k]
+            auxDynamics = (aux, N, z, nSpecies, nPatches, pre) ->
+                [aux[k] * (eta - chi * aux[k]) - gamma * sum(N[i, k] for i in 1:nSpecies) * aux[k]
                  for k in 1:nPatches],
             precompute = (z, nSpecies, nPatches) ->
                 (mort = [0.5 * z[i][1]^2 for i in 1:nSpecies],)
-        ) do i, j, N, z, R, nSpecies, nPatches, pre
-            (beta * R[j] - pre.mort[i]) * N[i, j]
+        ) do i, j, N, z, aux, nSpecies, nPatches, pre
+            (beta * aux[j] - pre.mort[i]) * N[i, j]
         end
 
         comm = Community([1.0 1.0;], [0.0], [2.0, 3.0])
@@ -629,7 +622,7 @@ end
 
     @testset "unstructured_time_no_precompute" begin
         # Growth rate varies sinusoidally with time
-        ecology = unstructuredModel() do i, n, z, nSpecies, t
+        ecology = unstructuredModel() do i, n, z, aux, nSpecies, t
             r_t = 1.0 + 0.5 * sin(2π * t)
             n[i] * (r_t - n[i])
         end
@@ -656,7 +649,7 @@ end
             precompute = (z, nSpecies) -> (
                 A = [α(z[i], z[j]) for i in 1:nSpecies, j in 1:nSpecies],
             )
-        ) do i, n, z, nSpecies, pre, t
+        ) do i, n, z, aux, nSpecies, pre, t
             r_t = 1.0 + 0.5 * sin(2π * t)
             n[i] * (r_t - sum(pre.A[i, j] * n[j] for j in 1:nSpecies))
         end
@@ -677,10 +670,10 @@ end
         K0 = 10.0; eta = 1.0
 
         ecology = unstructuredModel(
-            auxDynamics = (R, n, z, nSpecies, t) ->
-                [eta * (K0 * (1.0 + 0.5 * sin(2π * t)) - R[1]) -
-                 sum(n[i] * R[1] for i in 1:nSpecies)]
-        ) do i, n, z, nSpecies
+            auxDynamics = (aux, n, z, nSpecies, t) ->
+                [eta * (K0 * (1.0 + 0.5 * sin(2π * t)) - aux[1]) -
+                 sum(n[i] * aux[1] for i in 1:nSpecies)]
+        ) do i, n, z, aux, nSpecies
             n[i] * (1.0 - n[i])
         end
 
@@ -700,13 +693,13 @@ end
         K0 = 10.0; eta = 1.0
 
         ecology = unstructuredModel(
-            auxDynamics = (R, n, z, nSpecies, pre, t) ->
-                [eta * (K0 * (1.0 + 0.5 * sin(2π * t)) - R[1]) -
-                 sum(pre.a[i] * n[i] * R[1] for i in 1:nSpecies)],
+            auxDynamics = (aux, n, z, nSpecies, pre, t) ->
+                [eta * (K0 * (1.0 + 0.5 * sin(2π * t)) - aux[1]) -
+                 sum(pre.a[i] * n[i] * aux[1] for i in 1:nSpecies)],
             precompute = (z, nSpecies) -> (
                 a = [1.0 + z[i][1]^2 for i in 1:nSpecies],
             )
-        ) do i, n, z, nSpecies, pre
+        ) do i, n, z, aux, nSpecies, pre
             n[i] * (1.0 - n[i])
         end
 
@@ -727,7 +720,7 @@ end
 
     @testset "structured_time_no_precompute" begin
         # Seasonal carrying capacity, single species two patches
-        ecology = structuredModel() do i, j, N, z, R, nSpecies, nPatches, t
+        ecology = structuredModel() do i, j, N, z, aux, nSpecies, nPatches, t
             K_t = 1.0 + 0.5 * sin(2π * t)
             (K_t - sum(N[k, j] for k in 1:nSpecies)) * N[i, j]
         end
@@ -751,7 +744,7 @@ end
         ecology = structuredModel(
             precompute = (z, nSpecies, nPatches) ->
                 [exp(-0.5 * (z[i][1] - y[j])^2) for i in 1:nSpecies, j in 1:nPatches]
-        ) do i, j, N, z, R, nSpecies, nPatches, pre, t
+        ) do i, j, N, z, aux, nSpecies, nPatches, pre, t
             K_t = 1.0 + 0.5 * sin(2π * t)
             dd = sum(N[k, j] for k in 1:nSpecies)
             (pre[i, j] * K_t - dd) * N[i, j]
@@ -772,12 +765,12 @@ end
         eta = 1.0; chi = 1.0
 
         ecology = structuredModel(
-            auxDynamics = (R, N, z, nSpecies, nPatches, t) ->
-                [R[k] * (eta * (1.0 + 0.5 * sin(2π * t)) - chi * R[k]) -
-                 sum(N[i, k] for i in 1:nSpecies) * R[k]
+            auxDynamics = (aux, N, z, nSpecies, nPatches, t) ->
+                [aux[k] * (eta * (1.0 + 0.5 * sin(2π * t)) - chi * aux[k]) -
+                 sum(N[i, k] for i in 1:nSpecies) * aux[k]
                  for k in 1:nPatches]
-        ) do i, j, N, z, R, nSpecies, nPatches
-            (R[j] - 1.0) * N[i, j]
+        ) do i, j, N, z, aux, nSpecies, nPatches
+            (aux[j] - 1.0) * N[i, j]
         end
 
         comm = Community([1.0 1.0;], [0.0], [2.0, 3.0])
@@ -796,13 +789,13 @@ end
         eta = 1.0; chi = 1.0
 
         ecology = structuredModel(
-            auxDynamics = (R, N, z, nSpecies, nPatches, pre, t) ->
-                [R[k] * (eta * (1.0 + 0.5 * sin(2π * t)) - chi * R[k]) -
-                 pre.gamma * sum(N[i, k] for i in 1:nSpecies) * R[k]
+            auxDynamics = (aux, N, z, nSpecies, nPatches, pre, t) ->
+                [aux[k] * (eta * (1.0 + 0.5 * sin(2π * t)) - chi * aux[k]) -
+                 pre.gamma * sum(N[i, k] for i in 1:nSpecies) * aux[k]
                  for k in 1:nPatches],
             precompute = (z, nSpecies, nPatches) -> (gamma = 1.0,)
-        ) do i, j, N, z, R, nSpecies, nPatches, pre
-            (R[j] - 1.0) * N[i, j]
+        ) do i, j, N, z, aux, nSpecies, nPatches, pre
+            (aux[j] - 1.0) * N[i, j]
         end
 
         comm = Community([1.0 1.0;], [0.0], [2.0, 3.0])

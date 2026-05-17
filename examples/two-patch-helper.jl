@@ -12,7 +12,7 @@ using Random
 d = 1.0; mu = 0.1; alpha = 1.0
 y = [d/2, -d/2]
 
-ecology = structuredModel() do i, j, N, z, R, nSpecies, nPatches
+ecology = structuredModel() do i, j, N, z, aux, nSpecies, nPatches
     growth = pdf(Normal(0, 1), z[i][1] - y[j])
     dd = alpha * sum(N[k, j] for k in 1:nSpecies) # density dependence
     (growth - dd - mu) * N[i, j] + mu * sum(N[i, k] for k in 1:nPatches if k != j)
@@ -27,7 +27,7 @@ config = EcoEvoConfig(
         maxTime = Inf,
         algorithm = DynamicSS(),
         abstol = 1e-10,
-        reltol = 1e-8
+        reltol = 1e-10
     ),
     extThreshold = 0.003
 )

@@ -12,7 +12,7 @@ kernelFn(zi, zj) = -Q((zi[1] - zj[1]) / 0.15)
 
 
 # Create model using unstructuredModel helper function:
-ecology = unstructuredModel() do i, n, z, nSpecies
+ecology = unstructuredModel() do i, n, z, aux, nSpecies
     n[i] * (growthFn(z[i]) + sum(kernelFn(z[i], z[j]) * n[j] for j in 1:nSpecies))
 end
 

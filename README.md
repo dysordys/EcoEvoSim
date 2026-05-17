@@ -113,7 +113,7 @@ reshaping structured populations.
 Use this when each species has a single population size (no spatial or stage structure).
 
 ```julia
-unstructuredModel(; precompute = nothing) do i, n, z, nSpecies
+unstructuredModel(; auxDynamics = nothing, precompute = nothing) do i, n, z, aux, nSpecies
     # return dn[i]/dt
 end
 ```
@@ -123,6 +123,7 @@ end
 | `i`        | Current species index |
 | `n`        | Population size vector (`n[j]` = pop. of species `j`) |
 | `z`        | Vector of trait vectors (`z[j]` = traits of species `j`) |
+| `aux`      | Auxiliary variable vector (e.g., resource levels) |
 | `nSpecies` | Total number of species |
 
 The body should return the time derivative $\text{d}n_i/\text{d}t$. External
@@ -130,7 +131,7 @@ parameters are captured via closures as usual. For example, to implement the sam
 Lotka-Volterra model as in the example above:
 
 ```julia
-ecology = unstructuredModel() do i, n, z, nSpecies
+ecology = unstructuredModel() do i, n, z, aux, nSpecies
     n[i] * (growthFn(z[i]) + sum(kernelFn(z[i], z[j]) * n[j] for j in 1:nSpecies))
 end
 ```
@@ -153,7 +154,7 @@ ecology = unstructuredModel(
         b = [growthFn(z[i]) for i in 1:nSpecies],
         A = [kernelFn(z[i], z[j]) for i in 1:nSpecies, j in 1:nSpecies]
     )
-) do i, n, z, nSpecies, pre
+) do i, n, z, aux, nSpecies, pre
     n[i] * (pre.b[i] + sum(pre.A[i, j] * n[j] for j in 1:nSpecies))
 end
 ```
@@ -163,7 +164,7 @@ end
 Use this when populations are structured (e.g., multiple patches or age/stage classes).
 
 ```julia
-structuredModel(; auxDynamics = nothing, precompute = nothing) do i, j, N, z, R, nSpecies, nPatches
+structuredModel(; auxDynamics = nothing, precompute = nothing) do i, j, N, z, aux, nSpecies, nPatches
     # return dN[i,j]/dt
 end
 ```
@@ -174,12 +175,12 @@ end
 | `j`        | Patch/stage index |
 | `N`        | Density matrix (`N[i,j]` = density of species `i` in patch `j`) |
 | `z`        | Vector of trait vectors (`z[i]` = traits of species `i`) |
-| `R`        | Auxiliary variable vector (e.g., resource levels per patch) |
+| `aux`      | Auxiliary variable vector (e.g., resource levels per patch) |
 | `nSpecies` | Total number of species |
 | `nPatches` | Number of patches/stages |
 
 The optional `auxDynamics` keyword accepts a function
-`(R, N, z, nSpecies, nPatches) -> Vector` that returns time derivatives for
+`(aux, N, z, nSpecies, nPatches) -> Vector` that returns time derivatives for
 auxiliary variables (e.g., resource dynamics).
 
 The optional `precompute` keyword accepts a function `(z, nSpecies, nPatches) -> pre`

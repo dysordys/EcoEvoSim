@@ -22,7 +22,7 @@ ecology = unstructuredModel(
         b = [growthFn(z[i]) for i in 1:nSpecies],
         A = [kernelFn(z[i], z[j]) for i in 1:nSpecies, j in 1:nSpecies]
     )
-) do i, n, z, nSpecies, pre
+) do i, n, z, aux, nSpecies, pre
     n[i] * (pre.b[i] + sum(pre.A[i, j] * n[j] for j in 1:nSpecies))
 end
 
