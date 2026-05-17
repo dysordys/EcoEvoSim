@@ -16,8 +16,8 @@ using LinearAlgebra
         # Create the dynamics function
         ecoDynFn = lotkaVolterra(growthFn, kernelFn)(comm)
 
-        # Check that it returns a function
-        @test ecoDynFn isa Function
+        # Check that it returns a callable (ODEFunction wraps the dynamics)
+        @test applicable(ecoDynFn, [1.0, 1.0, 1.0], nothing, 0.0)
 
         # Test that the dynamics function has the correct signature
         u = [1.0, 1.0, 1.0]
@@ -397,8 +397,7 @@ end
             precompute = (z, nSpecies) -> (
                 a = [1.0 + z[i][1]^2 for i in 1:nSpecies],
             )
-        ) do i, n, z, nSpecies, pre
-            pre.a[i] * n[i] * (1.0 - n[i])
+        ) do i, n, z, nSpecies, pre            pre.a[i] * n[i] * (1.0 - n[i])
         end
 
         comm = Community([0.5, 0.3], [0.0, 1.0], [5.0])
@@ -619,6 +618,203 @@ end
         # Aux still works
         @test dudt[3] ≈ 2.0 * (1.0 - 1.0*2.0) - 1.0*1.0*2.0 rtol=1e-10
         @test dudt[4] ≈ 3.0 * (1.0 - 1.0*3.0) - 1.0*1.0*3.0 rtol=1e-10
+    end
+
+end
+
+
+@testset "tests_of_time_dependence" begin
+
+    # ── unstructuredModel ─────────────────────────────────────────────────────
+
+    @testset "unstructured_time_no_precompute" begin
+        # Growth rate varies sinusoidally with time
+        ecology = unstructuredModel() do i, n, z, nSpecies, t
+            r_t = 1.0 + 0.5 * sin(2π * t)
+            n[i] * (r_t - n[i])
+        end
+
+        comm = Community([0.5], [0.0], Float64[])
+        ode_fn = ecology(comm)
+
+        # At t=0: r_t = 1.0, du = 0.5*(1.0 - 0.5) = 0.25
+        dudt0 = ode_fn([0.5], nothing, 0.0)
+        @test dudt0[1] ≈ 0.5 * (1.0 - 0.5) rtol=1e-10
+
+        # At t=0.25: r_t = 1.5, du = 0.5*(1.5 - 0.5) = 0.5
+        dudt1 = ode_fn([0.5], nothing, 0.25)
+        @test dudt1[1] ≈ 0.5 * (1.5 - 0.5) rtol=1e-10
+
+        # Dynamics differ at different times
+        @test dudt0[1] ≠ dudt1[1]
+    end
+
+    @testset "unstructured_time_with_precompute" begin
+        α(zi, zj) = exp(-sum((zi .- zj).^2) / 0.04)
+
+        ecology = unstructuredModel(
+            precompute = (z, nSpecies) -> (
+                A = [α(z[i], z[j]) for i in 1:nSpecies, j in 1:nSpecies],
+            )
+        ) do i, n, z, nSpecies, pre, t
+            r_t = 1.0 + 0.5 * sin(2π * t)
+            n[i] * (r_t - sum(pre.A[i, j] * n[j] for j in 1:nSpecies))
+        end
+
+        comm = Community([1.0, 1.0], [-0.2, 0.2], Float64[])
+        ode_fn = ecology(comm)
+
+        dudt0 = ode_fn([1.0, 1.0], nothing, 0.0)
+        dudt1 = ode_fn([1.0, 1.0], nothing, 0.25)
+
+        @test all(isfinite.(dudt0))
+        @test all(isfinite.(dudt1))
+        @test dudt0 ≠ dudt1
+    end
+
+    @testset "unstructured_time_with_auxDynamics_no_precompute" begin
+        # Time-varying resource carrying capacity
+        K0 = 10.0; eta = 1.0
+
+        ecology = unstructuredModel(
+            auxDynamics = (R, n, z, nSpecies, t) ->
+                [eta * (K0 * (1.0 + 0.5 * sin(2π * t)) - R[1]) -
+                 sum(n[i] * R[1] for i in 1:nSpecies)]
+        ) do i, n, z, nSpecies
+            n[i] * (1.0 - n[i])
+        end
+
+        comm = Community([0.5], [0.0], [5.0])
+        ode_fn = ecology(comm)
+
+        # At t=0: K_eff=10, aux = 1*(10-5) - 0.5*5 = 2.5
+        dudt0 = ode_fn(unpackCommunity(comm), nothing, 0.0)
+        @test dudt0[2] ≈ eta * (K0 - 5.0) - 0.5 * 5.0 rtol=1e-10
+
+        # At t=0.25: K_eff=15, aux = 1*(15-5) - 0.5*5 = 7.5
+        dudt1 = ode_fn(unpackCommunity(comm), nothing, 0.25)
+        @test dudt1[2] ≈ eta * (K0 * 1.5 - 5.0) - 0.5 * 5.0 rtol=1e-10
+    end
+
+    @testset "unstructured_time_with_auxDynamics_and_precompute" begin
+        K0 = 10.0; eta = 1.0
+
+        ecology = unstructuredModel(
+            auxDynamics = (R, n, z, nSpecies, pre, t) ->
+                [eta * (K0 * (1.0 + 0.5 * sin(2π * t)) - R[1]) -
+                 sum(pre.a[i] * n[i] * R[1] for i in 1:nSpecies)],
+            precompute = (z, nSpecies) -> (
+                a = [1.0 + z[i][1]^2 for i in 1:nSpecies],
+            )
+        ) do i, n, z, nSpecies, pre
+            n[i] * (1.0 - n[i])
+        end
+
+        comm = Community([0.5], [0.0], [5.0])
+        ode_fn = ecology(comm)
+
+        # pre.a = [1.0 + 0^2] = [1.0]
+        # At t=0: K_eff=10, aux = 1*(10-5) - 1*0.5*5 = 2.5
+        dudt0 = ode_fn(unpackCommunity(comm), nothing, 0.0)
+        @test dudt0[2] ≈ eta * (K0 - 5.0) - 1.0 * 0.5 * 5.0 rtol=1e-10
+
+        # At t=0.25: K_eff=15, aux = 1*(15-5) - 1*0.5*5 = 7.5
+        dudt1 = ode_fn(unpackCommunity(comm), nothing, 0.25)
+        @test dudt1[2] ≈ eta * (K0 * 1.5 - 5.0) - 1.0 * 0.5 * 5.0 rtol=1e-10
+    end
+
+    # ── structuredModel ───────────────────────────────────────────────────────
+
+    @testset "structured_time_no_precompute" begin
+        # Seasonal carrying capacity, single species two patches
+        ecology = structuredModel() do i, j, N, z, R, nSpecies, nPatches, t
+            K_t = 1.0 + 0.5 * sin(2π * t)
+            (K_t - sum(N[k, j] for k in 1:nSpecies)) * N[i, j]
+        end
+
+        comm = Community([0.5 0.5;], [0.0])
+        ode_fn = ecology(comm)
+
+        # At t=0: K_t=1, du = (1 - 0.5)*0.5 = 0.25
+        dudt0 = ode_fn(unpackCommunity(comm), nothing, 0.0)
+        @test dudt0[1] ≈ (1.0 - 0.5) * 0.5 rtol=1e-10
+        @test dudt0[2] ≈ (1.0 - 0.5) * 0.5 rtol=1e-10
+
+        # At t=0.25: K_t=1.5, du = (1.5 - 0.5)*0.5 = 0.5
+        dudt1 = ode_fn(unpackCommunity(comm), nothing, 0.25)
+        @test dudt1[1] ≈ (1.5 - 0.5) * 0.5 rtol=1e-10
+    end
+
+    @testset "structured_time_with_precompute" begin
+        y = [0.5, -0.5]
+
+        ecology = structuredModel(
+            precompute = (z, nSpecies, nPatches) ->
+                [exp(-0.5 * (z[i][1] - y[j])^2) for i in 1:nSpecies, j in 1:nPatches]
+        ) do i, j, N, z, R, nSpecies, nPatches, pre, t
+            K_t = 1.0 + 0.5 * sin(2π * t)
+            dd = sum(N[k, j] for k in 1:nSpecies)
+            (pre[i, j] * K_t - dd) * N[i, j]
+        end
+
+        comm = Community([0.5 0.5;], [0.0])
+        ode_fn = ecology(comm)
+
+        dudt0 = ode_fn(unpackCommunity(comm), nothing, 0.0)
+        dudt1 = ode_fn(unpackCommunity(comm), nothing, 0.25)
+
+        @test all(isfinite.(dudt0))
+        @test all(isfinite.(dudt1))
+        @test dudt0 ≠ dudt1
+    end
+
+    @testset "structured_time_with_auxDynamics_no_precompute" begin
+        eta = 1.0; chi = 1.0
+
+        ecology = structuredModel(
+            auxDynamics = (R, N, z, nSpecies, nPatches, t) ->
+                [R[k] * (eta * (1.0 + 0.5 * sin(2π * t)) - chi * R[k]) -
+                 sum(N[i, k] for i in 1:nSpecies) * R[k]
+                 for k in 1:nPatches]
+        ) do i, j, N, z, R, nSpecies, nPatches
+            (R[j] - 1.0) * N[i, j]
+        end
+
+        comm = Community([1.0 1.0;], [0.0], [2.0, 3.0])
+        ode_fn = ecology(comm)
+
+        # At t=0: eta_eff=1, aux patch 1 = 2*(1-2) - 1*2 = -4
+        dudt0 = ode_fn(unpackCommunity(comm), nothing, 0.0)
+        @test dudt0[3] ≈ 2.0 * (1.0 - 1.0*2.0) - 1.0*2.0 rtol=1e-10
+
+        # At t=0.25: eta_eff=1.5, aux patch 1 = 2*(1.5-2) - 1*2 = -3
+        dudt1 = ode_fn(unpackCommunity(comm), nothing, 0.25)
+        @test dudt1[3] ≈ 2.0 * (1.5 - 1.0*2.0) - 1.0*2.0 rtol=1e-10
+    end
+
+    @testset "structured_time_with_auxDynamics_and_precompute" begin
+        eta = 1.0; chi = 1.0
+
+        ecology = structuredModel(
+            auxDynamics = (R, N, z, nSpecies, nPatches, pre, t) ->
+                [R[k] * (eta * (1.0 + 0.5 * sin(2π * t)) - chi * R[k]) -
+                 pre.gamma * sum(N[i, k] for i in 1:nSpecies) * R[k]
+                 for k in 1:nPatches],
+            precompute = (z, nSpecies, nPatches) -> (gamma = 1.0,)
+        ) do i, j, N, z, R, nSpecies, nPatches, pre
+            (R[j] - 1.0) * N[i, j]
+        end
+
+        comm = Community([1.0 1.0;], [0.0], [2.0, 3.0])
+        ode_fn = ecology(comm)
+
+        # At t=0: eta_eff=1, aux patch 1 = 2*(1-2) - 1*1*2 = -4
+        dudt0 = ode_fn(unpackCommunity(comm), nothing, 0.0)
+        @test dudt0[3] ≈ 2.0 * (1.0 - 2.0) - 1.0 * 1.0 * 2.0 rtol=1e-10
+
+        # At t=0.25: eta_eff=1.5, aux patch 1 = 2*(1.5-2) - 1*1*2 = -3
+        dudt1 = ode_fn(unpackCommunity(comm), nothing, 0.25)
+        @test dudt1[3] ≈ 2.0 * (1.5 - 2.0) - 1.0 * 1.0 * 2.0 rtol=1e-10
     end
 
 end
