@@ -238,11 +238,11 @@ end
 Create a structured ecological model (spatial patches or stage classes) from
 per-species-per-patch dynamics.
 
-The user-supplied function `eqnFn(i, j, N, z, aux, nSpecies, nPatches)` should
-return `dN[i,j]/dt` for species `i` in patch/stage `j`, where:
+The user-supplied function `eqnFn(i, j, n, z, aux, nSpecies, nPatches)` should
+return `dn[i,j]/dt` for species `i` in patch/stage `j`, where:
 - `i::Int`: species index
 - `j::Int`: patch/stage index
-- `N`: density matrix (`N[i,j]` = density of species `i` in patch `j`)
+- `n`: density matrix (`n[i,j]` = density of species `i` in patch `j`)
 - `z`: vector of trait vectors (`z[i]` = trait vector of species `i`)
 - `aux`: auxiliary variable vector (e.g., resource levels per patch)
 - `nSpecies::Int`: total number of species
@@ -252,19 +252,19 @@ return `dN[i,j]/dt` for species `i` in patch/stage `j`, where:
 signature, the current integration time `t` is passed as the final argument.
 The same applies to `auxDynamics`. This allows explicit time dependence (e.g.
 seasonal forcing), without any additional keyword:
-- without `precompute`: `eqnFn(i, j, N, z, aux, nSpecies, nPatches, t)`
-- with `precompute`: `eqnFn(i, j, N, z, aux, nSpecies, nPatches, pre, t)`
+- without `precompute`: `eqnFn(i, j, n, z, aux, nSpecies, nPatches, t)`
+- with `precompute`: `eqnFn(i, j, n, z, aux, nSpecies, nPatches, pre, t)`
 
 # Keyword Arguments
-- `auxDynamics`: optional function `(aux, N, z, nSpecies, nPatches) -> Vector`
+- `auxDynamics`: optional function `(aux, n, z, nSpecies, nPatches) -> Vector`
   returning time derivatives for auxiliary variables (e.g., resource dynamics).
   When `precompute` is also provided, `auxDynamics` receives an extra argument:
-  `auxDynamics(aux, N, z, nSpecies, nPatches, pre)`.
+  `auxDynamics(aux, n, z, nSpecies, nPatches, pre)`.
   Time dependence is detected by the same arity rule described above.
 - `precompute`: optional function `(z, nSpecies, nPatches) -> pre` that is called
   once per community to precompute trait-dependent quantities. When provided,
   both the equation function and `auxDynamics` receive an extra argument:
-  `eqnFn(i, j, N, z, aux, nSpecies, nPatches, pre)`.
+  `eqnFn(i, j, n, z, aux, nSpecies, nPatches, pre)`.
 
 Returns a factory function `Community -> (u, p, t) -> du` suitable for
 `EcoEvoConfig.ecoDyn`.
@@ -278,18 +278,18 @@ using EcoEvoSim, Distributions
 d = 1.0; mu = 0.1; alpha = 1.0
 y = [d/2, -d/2]
 
-ecology = structuredModel() do i, j, N, z, aux, nSpecies, nPatches
+ecology = structuredModel() do i, j, n, z, aux, nSpecies, nPatches
     growth = pdf(Normal(0, 1), z[i][1] - y[j])
-    dd = alpha * sum(N[k, j] for k in 1:nSpecies)
-    (growth - dd - mu) * N[i, j] + mu * sum(N[i, k] for k in 1:nPatches if k != j)
+    dd = alpha * sum(n[k, j] for k in 1:nSpecies)
+    (growth - dd - mu) * n[i, j] + mu * sum(n[i, k] for k in 1:nPatches if k != j)
 end
 ```
 
 With explicit time dependence (seasonally varying carrying capacity):
 ```julia
-ecology = structuredModel() do i, j, N, z, aux, nSpecies, nPatches, t
+ecology = structuredModel() do i, j, n, z, aux, nSpecies, nPatches, t
     K_t = 1.0 + 0.3 * sin(2π * t)   # seasonal forcing
-    (K_t - sum(N[k, j] for k in 1:nSpecies) - 0.1) * N[i, j]
+    (K_t - sum(n[k, j] for k in 1:nSpecies) - 0.1) * n[i, j]
 end
 ```
 
@@ -298,9 +298,9 @@ With precomputation:
 ecology = structuredModel(
     precompute = (z, nSpecies, nPatches) ->
         [pdf(Normal(0, 1), z[i][1] - y[j]) for i in 1:nSpecies, j in 1:nPatches]
-) do i, j, N, z, aux, nSpecies, nPatches, pre
-    dd = alpha * sum(N[k, j] for k in 1:nSpecies)
-    (pre[i, j] - dd - mu) * N[i, j] + mu * sum(N[i, k] for k in 1:nPatches if k != j)
+) do i, j, n, z, aux, nSpecies, nPatches, pre
+    dd = alpha * sum(n[k, j] for k in 1:nSpecies)
+    (pre[i, j] - dd - mu) * n[i, j] + mu * sum(n[i, k] for k in 1:nPatches if k != j)
 end
 ```
 
@@ -309,10 +309,10 @@ With precomputation and time dependence:
 ecology = structuredModel(
     precompute = (z, nSpecies, nPatches) ->
         [pdf(Normal(0, 1), z[i][1] - y[j]) for i in 1:nSpecies, j in 1:nPatches]
-) do i, j, N, z, aux, nSpecies, nPatches, pre, t
+) do i, j, n, z, aux, nSpecies, nPatches, pre, t
     K_t = 1.0 + 0.3 * sin(2π * t)
-    dd = alpha * sum(N[k, j] for k in 1:nSpecies)
-    (pre[i, j] * K_t - dd - mu) * N[i, j] + mu * sum(N[i, k] for k in 1:nPatches if k != j)
+    dd = alpha * sum(n[k, j] for k in 1:nSpecies)
+    (pre[i, j] * K_t - dd - mu) * n[i, j] + mu * sum(n[i, k] for k in 1:nPatches if k != j)
 end
 ```
 """
@@ -334,7 +334,7 @@ function structuredModel(eqnFn; auxDynamics=nothing, precompute=nothing)
 
         function ode_fn(u, p, t)
             # Reshape species state: u[1:nSp*nPatch] → species(rows) × patches(cols)
-            N   = reshape(@view(u[1:nSp*nPatch]), nPatch, nSp)'
+            n   = reshape(@view(u[1:nSp*nPatch]), nPatch, nSp)'
             aux = @view u[nSp*nPatch+1:nSp*nPatch+nAux]
 
             du = similar(u)
@@ -343,11 +343,11 @@ function structuredModel(eqnFn; auxDynamics=nothing, precompute=nothing)
             for i in 1:nSp
                 for j in 1:nPatch
                     du[nPatch*(i-1)+j] = if pre !== nothing
-                        eqn_uses_time ? eqnFn(i, j, N, z, aux, nSp, nPatch, pre, t) :
-                                        eqnFn(i, j, N, z, aux, nSp, nPatch, pre)
+                        eqn_uses_time ? eqnFn(i, j, n, z, aux, nSp, nPatch, pre, t) :
+                                        eqnFn(i, j, n, z, aux, nSp, nPatch, pre)
                     else
-                        eqn_uses_time ? eqnFn(i, j, N, z, aux, nSp, nPatch, t) :
-                                        eqnFn(i, j, N, z, aux, nSp, nPatch)
+                        eqn_uses_time ? eqnFn(i, j, n, z, aux, nSp, nPatch, t) :
+                                        eqnFn(i, j, n, z, aux, nSp, nPatch)
                     end
                 end
             end
@@ -355,11 +355,11 @@ function structuredModel(eqnFn; auxDynamics=nothing, precompute=nothing)
             # Auxiliary dynamics
             if auxDynamics !== nothing
                 du_aux = if pre !== nothing
-                    aux_uses_time ? auxDynamics(aux, N, z, nSp, nPatch, pre, t) :
-                                    auxDynamics(aux, N, z, nSp, nPatch, pre)
+                    aux_uses_time ? auxDynamics(aux, n, z, nSp, nPatch, pre, t) :
+                                    auxDynamics(aux, n, z, nSp, nPatch, pre)
                 else
-                    aux_uses_time ? auxDynamics(aux, N, z, nSp, nPatch, t) :
-                                    auxDynamics(aux, N, z, nSp, nPatch)
+                    aux_uses_time ? auxDynamics(aux, n, z, nSp, nPatch, t) :
+                                    auxDynamics(aux, n, z, nSp, nPatch)
                 end
                 du[nSp*nPatch+1:end] .= du_aux
             end

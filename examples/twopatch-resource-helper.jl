@@ -15,12 +15,12 @@ y = [d/2, -d/2]
 m_base = (beta * eta) / chi
 
 ecology = structuredModel(
-    auxDynamics = (aux, N, z, nSpecies, nPatches) ->
-        [aux[k] * (eta - chi * aux[k]) - gamma * sum(N[i, k] for i in 1:nSpecies) * aux[k]
+    auxDynamics = (aux, n, z, nSpecies, nPatches) ->
+        [aux[k] * (eta - chi * aux[k]) - gamma * sum(n[i, k] for i in 1:nSpecies) * aux[k]
          for k in 1:nPatches]
-) do i, j, N, z, aux, nSpecies, nPatches
+) do i, j, n, z, aux, nSpecies, nPatches
     mort = m_base - theta * pdf(Normal(y[j], sigma), z[i][1])
-    (beta * aux[j] - mort - mu) * N[i, j] + mu * sum(N[i, k] for k in 1:nPatches if k != j)
+    (beta * aux[j] - mort - mu) * n[i, j] + mu * sum(n[i, k] for k in 1:nPatches if k != j)
 end
 
 

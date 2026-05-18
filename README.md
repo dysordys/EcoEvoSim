@@ -92,10 +92,10 @@ initCommunity = ecoDyn(initCommunity, config)
 # Run the simulation for 1000 mutation events:
 evoHistory = evolve(initCommunity, config, 1000)
 
-# Run for another 500 events - this is as easy as applying evolve() to evoHistory:
-evoHistory = evolve(evoHistory, config, 500)
+# Run for another 1000 events - this is as easy as applying evolve() to evoHistory:
+evoHistory = evolve(evoHistory, config, 1000)
 
-# Visualize the results for all 1500 mutation events:
+# Visualize the results for all 2000 mutation events:
 plotEvo(evoHistory)
 ```
 
@@ -164,8 +164,8 @@ end
 Use this when populations are structured (e.g., multiple patches or age/stage classes).
 
 ```julia
-structuredModel(; auxDynamics = nothing, precompute = nothing) do i, j, N, z, aux, nSpecies, nPatches
-    # return dN[i,j]/dt
+structuredModel(; auxDynamics = nothing, precompute = nothing) do i, k, n, z, aux, nSpecies, nPatches
+    # return dn[i,k]/dt
 end
 ```
 
@@ -173,14 +173,14 @@ end
 |------------|-------------|
 | `i`        | Species index |
 | `j`        | Patch/stage index |
-| `N`        | Density matrix (`N[i,j]` = density of species `i` in patch `j`) |
+| `n`        | Density matrix (`n[i,k]` = density of species `i` in patch `k`) |
 | `z`        | Vector of trait vectors (`z[i]` = traits of species `i`) |
 | `aux`      | Auxiliary variable vector (e.g., resource levels per patch) |
 | `nSpecies` | Total number of species |
 | `nPatches` | Number of patches/stages |
 
 The optional `auxDynamics` keyword accepts a function
-`(aux, N, z, nSpecies, nPatches) -> Vector` that returns time derivatives for
+`(aux, n, z, nSpecies, nPatches) -> Vector` that returns time derivatives for
 auxiliary variables (e.g., resource dynamics).
 
 The optional `precompute` keyword accepts a function `(z, nSpecies, nPatches) -> pre`
