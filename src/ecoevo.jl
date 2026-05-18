@@ -7,6 +7,25 @@ using SteadyStateDiffEq
 
 
 """
+    DiscreteSS()
+
+Pseudo-algorithm for discrete-time fixed-point iteration.
+
+When used as the `algorithm` in `IntegrationParams`, `ecoDyn` iterates the map
+`u ← f(u, nothing, t)` for up to `maxTime` steps, stopping early when
+`‖u_new − u_old‖ < abstol + reltol * ‖u_old‖`.
+
+The `abstol` and `reltol` tolerances are taken from `solver_options` (defaulting
+to `1e-8` and `1e-6` respectively).  The community time is advanced by one unit
+per step.  Setting `maxTime = Inf` (the natural default) imposes no cap; a finite
+value acts as a safety limit on the number of iterations.
+
+Analogous to `DynamicSS()` for continuous-time systems.
+"""
+struct DiscreteSS end
+
+
+"""
     IntegrationParams{T<:Real, Alg}
 
 Parameters for ODE integration during ecological dynamics.
@@ -27,6 +46,12 @@ params = IntegrationParams(maxTime = 100.0, algorithm = Tsit5(),
 
 # Steady-state solver
 params = IntegrationParams(maxTime = 100.0, algorithm = DynamicSS())
+
+# Discrete-time recursion (maxTime = number of generations)
+    params = IntegrationParams(maxTime = 100.0, algorithm = FunctionMap())
+
+# Discrete fixed-point iteration (stop when the map converges; maxTime is a safety cap)
+    params = IntegrationParams(maxTime = Inf, algorithm = DiscreteSS())
 ```
 """
 struct IntegrationParams{T<:Real, Alg}
@@ -45,18 +70,19 @@ IntegrationParams(maxTime::T, algorithm::Alg, solver_options::NamedTuple) where 
     IntegrationParams{T, Alg}(maxTime, algorithm, solver_options)
 
 # Convenience constructor with default Rodas5 and common tolerances
-IntegrationParams(maxTime::T; algorithm::Alg = Rodas5(),
-                  solver_options::NamedTuple = (abstol=1e-8, reltol=1e-6)) where {T<:Real, Alg} =
-    IntegrationParams(maxTime, algorithm, solver_options)
+IntegrationParams(maxTime::Real; algorithm::Alg = Rodas5(),
+                  solver_options::NamedTuple = (abstol=1e-8, reltol=1e-6)) where {Alg} =
+    IntegrationParams(float(maxTime), algorithm, solver_options)
 
 # Keyword argument constructor with explicit abstol/reltol (captures any additional kwargs)
-function IntegrationParams(; maxTime::T,
+function IntegrationParams(; maxTime::Real,
                             algorithm::Alg = Rodas5(),
                             abstol = 1e-8,
                             reltol = 1e-6,
-                            kwargs...) where {T<:Real, Alg}
+                            kwargs...) where {Alg}
+    T = typeof(float(maxTime))
     solver_options = merge((abstol=convert(T, abstol), reltol=convert(T, reltol)), kwargs)
-    IntegrationParams(maxTime, algorithm, solver_options)
+    IntegrationParams(convert(T, maxTime), algorithm, solver_options)
 end
 
 
@@ -186,11 +212,21 @@ end
     ecoDyn(community::Community{T, AuxClasses}, config::EcoEvoConfig{T}) where {T, AuxClasses}
 
 Integrate ecological dynamics for the specified time period.
-Extracts population sizes and auxiliary variables, integrates the ODE system,
+Extracts population sizes and auxiliary variables, integrates the system,
 and returns a new community with updated values.
 
-The config.ecoDyn field should be a factory function that takes a Community
-and returns an ODE function (u, p, t) -> du.
+The `config.ecoDyn` field should be a factory function `Community -> Function`.
+Depending on the algorithm in `config.integrationParams`:
+- **Continuous time** (default, e.g. `Rodas5()`, `Tsit5()`): the returned
+  function has signature `(u, p, t) -> du` and is used as an ODE right-hand side.
+- **Steady state** (`DynamicSS()`, `SSRootfind()`): same signature; solved via
+  `SteadyStateProblem`.
+- **Discrete time** (`FunctionMap()`): the returned function has signature
+  `(u, p, t) -> u_next` and is applied as a recursion map.  `maxTime` is then
+  the number of discrete generations to iterate.
+- **Discrete fixed-point** (`DiscreteSS()`): same map semantics, but iteration
+  stops early once the state has converged within `abstol`/`reltol`.  `maxTime`
+  is a safety cap on the number of steps.
 """
 function ecoDyn(
         community::Community{T, AuxClasses},
@@ -225,6 +261,35 @@ function ecoDyn(
         u_final = sol.u
         # For rootfinding, time is meaningless - keep original time
         t_final = community.time
+    elseif alg isa FunctionMap
+        # Discrete-time recursion: interpret the factory output as u(t+1) = f(u(t), p, t)
+        # rather than a derivative.  maxTime is the number of discrete steps.
+        tspan = (community.time, community.time + config.integrationParams.maxTime)
+        prob = DiscreteProblem(ode_fn, u0, tspan)
+        sol = solve(prob, FunctionMap(); config.integrationParams.solver_options...)
+        u_final = sol.u[end]
+        t_final = convert(T, sol.t[end])
+    elseif alg isa DiscreteSS
+        # Discrete fixed-point iteration: iterate u ← f(u, nothing, t) until
+        # ‖u_new − u‖ < abstol + reltol * ‖u‖, or until maxTime steps.
+        opts = config.integrationParams.solver_options
+        abstol_val = T(get(opts, :abstol, 1e-8))
+        reltol_val = T(get(opts, :reltol, 1e-6))
+        maxSteps   = isfinite(config.integrationParams.maxTime) ?
+                         round(Int, config.integrationParams.maxTime) : typemax(Int)
+        u   = copy(u0)
+        t   = community.time
+        for _ in 1:maxSteps
+            u_new = ode_fn(u, nothing, t)
+            if norm(u_new .- u) < abstol_val + reltol_val * norm(u)
+                u = u_new
+                break
+            end
+            u = u_new
+            t += one(T)
+        end
+        u_final = u
+        t_final = t
     else
         # Use ODEProblem for time-integration solvers
         tspan = (community.time, community.time + config.integrationParams.maxTime)

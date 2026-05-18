@@ -29,7 +29,7 @@ export PopulationSize, Phenotype, Species, Community, EvoHistory,
        plotEvo, plotEvoTwoTrait, plotEvoTwoTraitInteractive,
        niceTickInterval, historyToTable, historyList, filterHistory,
        unstructuredModel, structuredModel,
-       DynamicSS, SSRootfind
+       DynamicSS, SSRootfind, FunctionMap, DiscreteSS
 
 
 # Stubs for the Plots extension — implemented when Plots is loaded
