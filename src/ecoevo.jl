@@ -209,7 +209,7 @@ end
 
 
 """
-    ecoDyn(community::Community{T, AuxClasses}, config::EcoEvoConfig{T}) where {T, AuxClasses}
+    ecoDyn(community::Community{TC, AuxClasses}, config::EcoEvoConfig{TE}) where {TC<:Real, TE<:Real, AuxClasses}
 
 Integrate ecological dynamics for the specified time period.
 Extracts population sizes and auxiliary variables, integrates the system,
@@ -229,9 +229,9 @@ Depending on the algorithm in `config.integrationParams`:
   is a safety cap on the number of steps.
 """
 function ecoDyn(
-        community::Community{T, AuxClasses},
-        config::EcoEvoConfig{T}
-    ) where {T<:Real, AuxClasses}
+        community::Community{TC, AuxClasses},
+        config::EcoEvoConfig{TE}
+    ) where {TC<:Real, TE<:Real, AuxClasses}
 
     # Unpack community into state vector
     u0 = unpackCommunity(community)
@@ -538,8 +538,8 @@ noMutation(community::Community) = community
 
 
 """
-    singleEvoStep(community::Community{T, AuxClasses},
-                  config::EcoEvoConfig{T}) where {T, AuxClasses}
+    singleEvoStep(community::Community{TC, AuxClasses},
+                  config::EcoEvoConfig{TE}) where {TC<:Real, TE<:Real, AuxClasses}
 
 Perform one eco-evolutionary step:
 1. Add a mutant species using the mutation generator from config
@@ -548,9 +548,9 @@ Perform one eco-evolutionary step:
 4. Return the resulting community
 """
 function singleEvoStep(
-        community::Community{T, AuxClasses},
-        config::EcoEvoConfig{T}
-    ) where {T<:Real, AuxClasses}
+        community::Community{TC, AuxClasses},
+        config::EcoEvoConfig{TE}
+    ) where {TC<:Real, TE<:Real, AuxClasses}
 
     community |>
         config.mutationGenerator |>
@@ -560,8 +560,8 @@ end
 
 
 """
-    evolve!(history::EvoHistory{T, AuxClasses}, config::EcoEvoConfig{T},
-            nMutEvents::Int) where {T, AuxClasses}
+    evolve!(history::EvoHistory{TC, AuxClasses}, config::EcoEvoConfig{TE},
+            nMutEvents::Int) where {TC<:Real, TE<:Real, AuxClasses}
 
 Run the main eco-evolutionary simulation loop:
 1. Start with the last community in history
@@ -573,11 +573,11 @@ Run the main eco-evolutionary simulation loop:
 Modifies history in place by appending new communities.
 """
 function evolve!(
-        history::EvoHistory{T, AuxClasses},
-        config::EcoEvoConfig{T},
+        history::EvoHistory{TC, AuxClasses},
+        config::EcoEvoConfig{TE},
         nMutEvents::Int;
         showProgress::Bool = true
-    ) where {T<:Real, AuxClasses}
+    ) where {TC<:Real, TE<:Real, AuxClasses}
     nMutEvents >= 0 || throw(ArgumentError("nMutEvents must be non-negative"))
 
     # Get the current community (last in history)
@@ -611,8 +611,8 @@ end
 
 
 """
-    evolve!(community::Community{T, AuxClasses}, config::EcoEvoConfig{T}, nMutEvents::Int;
-            showProgress::Bool=true) where {T, AuxClasses}
+    evolve!(community::Community{TC, AuxClasses}, config::EcoEvoConfig{TE}, nMutEvents::Int;
+            showProgress::Bool=true) where {TC<:Real, TE<:Real, AuxClasses}
 
 Convenience method that creates an EvoHistory from a single initial community
 and runs the evolutionary simulation.
@@ -620,11 +620,11 @@ and runs the evolutionary simulation.
 Returns the EvoHistory containing the initial community plus all evolved communities.
 """
 function evolve!(
-        community::Community{T, AuxClasses},
-        config::EcoEvoConfig{T},
+        community::Community{TC, AuxClasses},
+        config::EcoEvoConfig{TE},
         nMutEvents::Int;
         showProgress::Bool = true
-    ) where {T<:Real, AuxClasses}
+    ) where {TC<:Real, TE<:Real, AuxClasses}
     # Create history with initial community
     history = EvoHistory(community)
 
@@ -637,8 +637,8 @@ end
 
 
 """
-    evolve(history::EvoHistory{T, AuxClasses}, config::EcoEvoConfig{T}, nMutEvents::Int;
-           showProgress::Bool=true) where {T, AuxClasses}
+    evolve(history::EvoHistory{TC, AuxClasses}, config::EcoEvoConfig{TE}, nMutEvents::Int;
+           showProgress::Bool=true) where {TC<:Real, TE<:Real, AuxClasses}
 
 Non-mutating version of `evolve!`. Creates a deep copy of the history and runs
 the evolutionary simulation on the copy, leaving the original unchanged.
@@ -674,13 +674,13 @@ julia> length(history2)  # New history extended
 ```
 """
 function evolve(
-        history::EvoHistory{T, AuxClasses},
-        config::EcoEvoConfig{T},
+        history::EvoHistory{TC, AuxClasses},
+        config::EcoEvoConfig{TE},
         nMutEvents::Int;
         showProgress::Bool = true
-    ) where {T<:Real, AuxClasses}
+    ) where {TC<:Real, TE<:Real, AuxClasses}
     # Create a deep copy to avoid mutating the original
-    history_copy = EvoHistory{T, AuxClasses}(deepcopy(history.history))
+    history_copy = EvoHistory{TC, AuxClasses}(deepcopy(history.history))
 
     # Run evolution on the copy
     evolve!(history_copy, config, nMutEvents; showProgress=showProgress)
@@ -690,8 +690,8 @@ end
 
 
 """
-    evolve(community::Community{T, AuxClasses}, config::EcoEvoConfig{T}, nMutEvents::Int;
-           showProgress::Bool=true) where {T, AuxClasses}
+    evolve(community::Community{TC, AuxClasses}, config::EcoEvoConfig{TE}, nMutEvents::Int;
+           showProgress::Bool=true) where {TC<:Real, TE<:Real, AuxClasses}
 
 Non-mutating version of `evolve!` that starts from a Community.
 
@@ -725,11 +725,11 @@ julia> length(history)
 ```
 """
 function evolve(
-        community::Community{T, AuxClasses},
-        config::EcoEvoConfig{T},
+        community::Community{TC, AuxClasses},
+        config::EcoEvoConfig{TE},
         nMutEvents::Int;
         showProgress::Bool = true
-    ) where {T<:Real, AuxClasses}
+    ) where {TC<:Real, TE<:Real, AuxClasses}
     # For Community, this is equivalent to evolve! since we always create new history
     # But we provide it for consistency
     return evolve!(community, config, nMutEvents; showProgress=showProgress)
