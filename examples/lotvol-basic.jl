@@ -29,4 +29,4 @@ p = plotEvo(lineage)
 # savefig(p, "examples/plot.png")
 
 table = historyToTable(lineage)
-# CSV.write("examples/evo.csv", DataFrame(table))
+# CSV.write("examples/evo.csv", table)

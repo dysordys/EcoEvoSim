@@ -36,7 +36,3 @@ lineage = ecoDyn(lineage, config)
 @time lineage = evolve(lineage, config, 1500);
 
 p = plotEvo(lineage)
-# savefig(p, "examples/plot.png")
-
-table = historyToTable(lineage)
-# CSV.write("examples/evo.csv", DataFrame(table))
