@@ -951,4 +951,28 @@ numTests = 50
         end
     end
 
+
+    @testset "testing_lastCommunity" begin
+        for _ in 1:numTests
+            n = rand(2:10)
+            communities = [Community([Species(float(i), rand(1))],
+                                     PopulationSize{Float64}[], float(i))
+                           for i in 1:n]
+            history = EvoHistory(communities)
+
+            last_comm = lastCommunity(history)
+
+            # Must equal the final entry
+            @test last_comm.time == communities[end].time
+            @test speciesList(last_comm) == speciesList(communities[end])
+
+            # Single-element history works too
+            single = EvoHistory(communities[1:1])
+            @test lastCommunity(single).time == communities[1].time
+
+            # end-indexing works
+            @test lastCommunity(history).time == history[end].time
+        end
+    end
+
 end

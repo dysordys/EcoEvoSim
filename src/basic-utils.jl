@@ -21,9 +21,22 @@ Base.length(h::EvoHistory) = length(historyList(h))
 
 Base.getindex(h::EvoHistory, i::Integer) = historyList(h, i)
 Base.getindex(h::EvoHistory, indices) = EvoHistory(historyList(h, indices))
+Base.lastindex(h::EvoHistory) = length(h)
 Base.iterate(h::EvoHistory, state=1) =
     state > length(h) ? nothing : (historyList(h, state), state + 1)
 
+
+"""
+    lastCommunity(h::EvoHistory) -> Community
+
+Return the final community snapshot in an evolutionary history.
+
+# Example
+```julia
+finalComm = lastCommunity(evoHistory)
+```
+"""
+lastCommunity(h::EvoHistory) = h[end]
 
 
 # Filter evolutionary histories

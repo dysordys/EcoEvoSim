@@ -24,10 +24,11 @@ export PopulationSize, Phenotype, Species, Community, EvoHistory,
        removeSpecies, changePopsizes, changeTraits, orderByTrait, selectTraitDim,
        emptyCommunity, emptyEvoHistory, IntegrationParams, EcoEvoConfig,
        generateMutant, generateMutantWeighted, generateMutantSpatial,
-       generateMutantSpatialWeighted, noMutation, ecoDyn, singleEvoStep,
+       generateMutantSpatialWeighted, noMutation,
+       ecoDyn, ecoDynTimeSeries, singleEvoStep,
        evolve, unpackCommunity, packCommunity, lotkaVolterra,
        plotEvo, plotEvoTwoTrait, plotEvoTwoTraitInteractive,
-       niceTickInterval, historyToTable, historyList, filterHistory,
+       niceTickInterval, historyToTable, historyList, filterHistory, lastCommunity,
        unstructuredModel, structuredModel,
        DynamicSS, SSRootfind, FunctionMap, DiscreteSS
 

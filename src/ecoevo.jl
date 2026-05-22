@@ -268,13 +268,13 @@ function ecoDyn(
         prob = DiscreteProblem(ode_fn, u0, tspan)
         sol = solve(prob, FunctionMap(); config.integrationParams.solver_options...)
         u_final = sol.u[end]
-        t_final = convert(T, sol.t[end])
+        t_final = convert(TC, sol.t[end])
     elseif alg isa DiscreteSS
         # Discrete fixed-point iteration: iterate u ← f(u, nothing, t) until
         # ‖u_new − u‖ < abstol + reltol * ‖u‖, or until maxTime steps.
         opts = config.integrationParams.solver_options
-        abstol_val = T(get(opts, :abstol, 1e-8))
-        reltol_val = T(get(opts, :reltol, 1e-6))
+        abstol_val = TC(get(opts, :abstol, 1e-8))
+        reltol_val = TC(get(opts, :reltol, 1e-6))
         maxSteps   = isfinite(config.integrationParams.maxTime) ?
                          round(Int, config.integrationParams.maxTime) : typemax(Int)
         u   = copy(u0)
@@ -286,7 +286,7 @@ function ecoDyn(
                 break
             end
             u = u_new
-            t += one(T)
+            t += one(TC)
         end
         u_final = u
         t_final = t
@@ -301,6 +301,93 @@ function ecoDyn(
     end
 
     return packCommunity(u_final, community, t_final)
+end
+
+
+"""
+    ecoDynTimeSeries(community::Community{TC, AuxClasses}, config::EcoEvoConfig{TE};
+                     stepsize=nothing) where {TC<:Real, TE<:Real, AuxClasses}
+
+Integrate ecological dynamics and return the full trajectory as a
+`Vector{Community}`, one entry per saved time point (including the initial state).
+
+Behaves like `ecoDyn` but captures intermediate states:
+- **Continuous time** (e.g. `Rodas5()`, `Tsit5()`): `stepsize` is the gap in
+  time between successive saved states (starting from `community.time`). Omit to
+  use the solver's adaptive output points.
+- **Discrete time** (`FunctionMap()`): `stepsize` is passed to `solve()` as the
+  generation gap between saves; omit to save every generation.
+- **Discrete fixed-point** (`DiscreteSS()`): every iteration is saved; `stepsize`
+  is ignored.
+- **Steady-state** (`DynamicSS()`, `SSRootfind()`): not supported — these
+  compute a fixed point directly with no intermediate trajectory. Use `ecoDyn`
+  instead.
+
+# Example
+```julia
+# Save trajectory every 10 time units
+ts = ecoDynTimeSeries(community, config; stepsize = 10)
+popsizes(ts[end], 1)  # population sizes of species 1 at final saved time
+```
+"""
+function ecoDynTimeSeries(
+        community::Community{TC, AuxClasses},
+        config::EcoEvoConfig{TE};
+        stepsize = nothing
+    ) where {TC<:Real, TE<:Real, AuxClasses}
+
+    alg = config.integrationParams.algorithm
+
+    alg isa DynamicSS && throw(ArgumentError(
+        "ecoDynTimeSeries does not support DynamicSS (no intermediate trajectory). " *
+        "Use ecoDyn instead."
+    ))
+    alg isa SSRootfind && throw(ArgumentError(
+        "ecoDynTimeSeries does not support SSRootfind (no intermediate trajectory). " *
+        "Use ecoDyn instead."
+    ))
+
+    u0     = unpackCommunity(community)
+    ode_fn = config.ecoDyn(community)
+    opts   = config.integrationParams.solver_options
+
+    if alg isa FunctionMap
+        tspan = (community.time, community.time + config.integrationParams.maxTime)
+        prob  = DiscreteProblem(ode_fn, u0, tspan)
+        sol   = stepsize !== nothing ?
+            solve(prob, FunctionMap(); opts..., saveat = stepsize) :
+            solve(prob, FunctionMap(); opts...)
+        return [packCommunity(sol.u[i], community, sol.t[i])
+                for i in eachindex(sol.t)]
+
+    elseif alg isa DiscreteSS
+        abstol_val = TC(get(opts, :abstol, 1e-8))
+        reltol_val = TC(get(opts, :reltol, 1e-6))
+        maxSteps   = isfinite(config.integrationParams.maxTime) ?
+                         round(Int, config.integrationParams.maxTime) : typemax(Int)
+        u      = copy(u0)
+        t      = community.time
+        states = [packCommunity(u, community, t)]
+        for _ in 1:maxSteps
+            u_new     = ode_fn(u, nothing, t)
+            converged = norm(u_new .- u) < abstol_val + reltol_val * norm(u)
+            u  = u_new
+            t += one(TC)
+            push!(states, packCommunity(u, community, t))
+            converged && break
+        end
+        return states
+
+    else
+        # Continuous-time ODE
+        tspan = (community.time, community.time + config.integrationParams.maxTime)
+        prob  = ODEProblem(ode_fn, u0, tspan)
+        sol   = stepsize !== nothing ?
+            solve(prob, alg; opts..., saveat = stepsize) :
+            solve(prob, alg; opts...)
+        return [packCommunity(sol.u[i], community, sol.t[i])
+                for i in eachindex(sol.t)]
+    end
 end
 
 

@@ -743,6 +743,194 @@ numTests = 50
     end
 
 
+    @testset "testing_ecoDynTimeSeries_continuous_ode" begin
+        # ecoDynTimeSeries with a continuous ODE should return a Vector{Community}
+        # whose first entry is the initial state and last matches ecoDyn output.
+        for _ in 1:numTests
+            nSpecies = rand(2:4)
+            species = [Species(rand() * 5.0 + 0.5, rand(1)) for _ in 1:nSpecies]
+            comm = Community(species, PopulationSize{Float64}[], 0.0)
+            initialPops = [popsizes(comm, i)[1] for i in 1:nSpecies]
+
+            # Exponential decay: dx/dt = -x
+            ecoDynFactory = (community) -> (u, p, t) -> -u
+            mutGen = generateMutant(invaderPopsize=1.0, variance=0.01)
+            params = IntegrationParams(maxTime=1.0, abstol=1e-8, reltol=1e-6)
+            config = EcoEvoConfig(
+                ecoDyn=ecoDynFactory,
+                mutationGenerator=mutGen,
+                integrationParams=params,
+                extThreshold=1e-8
+            )
+
+            ts = ecoDynTimeSeries(comm, config)
+
+            # Must return a non-empty vector of Community
+            @test ts isa Vector{<:Community}
+            @test length(ts) >= 2
+
+            # First element is at initial time
+            @test ts[1].time ≈ comm.time
+
+            # Last element matches ecoDyn output
+            finalComm = ecoDyn(comm, config)
+            for i in 1:nSpecies
+                @test popsizes(ts[end], i)[1] ≈ popsizes(finalComm, i)[1] rtol=1e-6
+            end
+            @test ts[end].time ≈ finalComm.time
+
+            # Time is non-decreasing
+            for k in 2:length(ts)
+                @test ts[k].time >= ts[k-1].time
+            end
+
+            # Traits are unchanged throughout
+            for k in eachindex(ts)
+                for i in 1:nSpecies
+                    @test traits(ts[k], i) == traits(comm, i)
+                end
+            end
+        end
+    end
+
+
+    @testset "testing_ecoDynTimeSeries_stepsize" begin
+        # stepsize should control the gap between saved time points
+        species = [Species(2.0, [0.5]), Species(1.0, [0.0])]
+        comm = Community(species, PopulationSize{Float64}[], 0.0)
+
+        ecoDynFactory = (community) -> (u, p, t) -> -u
+        mutGen = generateMutant(invaderPopsize=1.0, variance=0.01)
+        params = IntegrationParams(maxTime=1.0, abstol=1e-10, reltol=1e-8)
+        config = EcoEvoConfig(
+            ecoDyn=ecoDynFactory,
+            mutationGenerator=mutGen,
+            integrationParams=params,
+            extThreshold=1e-8
+        )
+
+        step = 0.25
+        ts = ecoDynTimeSeries(comm, config; stepsize=step)
+
+        expected_times = 0.0:step:1.0
+        @test length(ts) == length(expected_times)
+        for (k, t) in enumerate(expected_times)
+            @test ts[k].time ≈ t atol=1e-10
+        end
+
+        # Values match analytical solution u(t) = u(0) * exp(-t)
+        for (k, t) in enumerate(expected_times)
+            @test popsizes(ts[k], 1)[1] ≈ 2.0 * exp(-t) rtol=1e-5
+            @test popsizes(ts[k], 2)[1] ≈ 1.0 * exp(-t) rtol=1e-5
+        end
+    end
+
+
+    @testset "testing_ecoDynTimeSeries_FunctionMap" begin
+        # FunctionMap: linear growth map u(t+1) = 1.5 * u(t)
+        nSpecies = 3
+        species = [Species(float(i), rand(1)) for i in 1:nSpecies]
+        comm = Community(species, PopulationSize{Float64}[], 0.0)
+
+        ecoDynFactory = (community) -> (u, p, t) -> 1.5 .* u
+        mutGen = generateMutant(invaderPopsize=1.0, variance=0.01)
+        nSteps = 5
+        params = IntegrationParams(maxTime=float(nSteps), algorithm=FunctionMap())
+        config = EcoEvoConfig(
+            ecoDyn=ecoDynFactory,
+            mutationGenerator=mutGen,
+            integrationParams=params,
+            extThreshold=1e-8
+        )
+
+        ts = ecoDynTimeSeries(comm, config)
+
+        # FunctionMap saves t=0 through t=nSteps (nSteps+1 entries)
+        @test length(ts) == nSteps + 1
+
+        # Each step multiplies by 1.5
+        for k in 2:length(ts)
+            for i in 1:nSpecies
+                @test popsizes(ts[k], i)[1] ≈ popsizes(ts[k-1], i)[1] * 1.5 rtol=1e-10
+            end
+        end
+
+        # Last entry matches ecoDyn
+        finalComm = ecoDyn(comm, config)
+        for i in 1:nSpecies
+            @test popsizes(ts[end], i)[1] ≈ popsizes(finalComm, i)[1] rtol=1e-10
+        end
+    end
+
+
+    @testset "testing_ecoDynTimeSeries_DiscreteSS" begin
+        # DiscreteSS: contraction map u(t+1) = 0.5 * u(t) converges to 0
+        nSpecies = 2
+        species = [Species(8.0, [0.0]), Species(4.0, [1.0])]
+        comm = Community(species, PopulationSize{Float64}[], 0.0)
+
+        ecoDynFactory = (community) -> (u, p, t) -> 0.5 .* u
+        mutGen = generateMutant(invaderPopsize=1.0, variance=0.01)
+        params = IntegrationParams(maxTime=Inf, algorithm=DiscreteSS(),
+                                   abstol=1e-8, reltol=1e-6)
+        config = EcoEvoConfig(
+            ecoDyn=ecoDynFactory,
+            mutationGenerator=mutGen,
+            integrationParams=params,
+            extThreshold=1e-12
+        )
+
+        ts = ecoDynTimeSeries(comm, config)
+
+        # Must have at least initial state + converged state
+        @test length(ts) >= 2
+
+        # First entry is the initial community
+        @test popsizes(ts[1], 1)[1] ≈ 8.0
+        @test popsizes(ts[1], 2)[1] ≈ 4.0
+
+        # Each step halves the population
+        for k in 2:length(ts)
+            for i in 1:nSpecies
+                @test popsizes(ts[k], i)[1] ≈ popsizes(ts[k-1], i)[1] * 0.5 rtol=1e-10
+            end
+        end
+
+        # Time advances by 1 each step
+        for k in 2:length(ts)
+            @test ts[k].time ≈ ts[k-1].time + 1.0
+        end
+    end
+
+
+    @testset "testing_ecoDynTimeSeries_errors_on_steady_state_solvers" begin
+        species = [Species(1.0, [0.0])]
+        comm = Community(species, PopulationSize{Float64}[], 0.0)
+        ecoDynFactory = (community) -> (u, p, t) -> -u
+        mutGen = generateMutant(invaderPopsize=1.0, variance=0.01)
+
+        # DynamicSS should throw
+        params_dss = IntegrationParams(maxTime=Inf, algorithm=DynamicSS())
+        config_dss = EcoEvoConfig(
+            ecoDyn=ecoDynFactory,
+            mutationGenerator=mutGen,
+            integrationParams=params_dss,
+            extThreshold=1e-8
+        )
+        @test_throws ArgumentError ecoDynTimeSeries(comm, config_dss)
+
+        # SSRootfind should throw
+        params_ss = IntegrationParams(maxTime=100.0, algorithm=SSRootfind())
+        config_ss = EcoEvoConfig(
+            ecoDyn=ecoDynFactory,
+            mutationGenerator=mutGen,
+            integrationParams=params_ss,
+            extThreshold=1e-8
+        )
+        @test_throws ArgumentError ecoDynTimeSeries(comm, config_ss)
+    end
+
+
     @testset "testing_singleEvoStep_basic_functionality" begin
         # Test that singleEvoStep performs all three operations correctly
         for _ in 1:numTests
