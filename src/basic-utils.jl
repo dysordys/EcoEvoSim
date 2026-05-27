@@ -720,92 +720,53 @@ function orderByTrait(comm::Community)
 end
 
 
-"""
-    historyToTable(history::EvoHistory)
+# Internal core shared by historyToTable and timeSeriesToTable.
+# Builds the OrderedDict table from a flat vector of communities; the caller
+# supplies the name and per-community values for the leading index column.
+function _communityVecToTable(
+        communities::Vector{<:Community{T, AuxClasses}},
+        indexColName::String,
+        indexColValues::Vector{Int}
+    ) where {T<:Real, AuxClasses}
 
-Convert an EvoHistory to a tabular format suitable for saving as CSV/TSV.
+    dims  = _getMaxDimensions(communities)
+    nRows = sum(numSpecies(comm) for comm in communities)
 
-Returns an `OrderedDict` where keys are column names and values are vectors of the data.
-Each row represents one species at one mutation event, with multiple rows per mutation event.
-
-# Column structure
-- `mutNo`: Mutation event number (0 for initial community)
-- `time`: Integration time for the given step
-- `species`: Species index within the community
-- `popsize_i`: Population size in stage class i
-- `trait_j`: Trait value in dimension j
-- `aux_k`: Auxiliary variable k (same for all species in a mutation event)
-
-The maximum number of stage classes, trait dimensions, and auxiliary variables
-across all communities determines the number of columns.
-
-# Example
-```julia
-history = evolve!(community, config, 100)
-table = historyToTable(history)
-
-# Save to CSV (requires DataFrames and CSV packages)
-using DataFrames, CSV
-df = DataFrame(table)
-CSV.write("evolution.csv", df)
-```
-"""
-function historyToTable(history::EvoHistory{T, AuxClasses}) where {T<:Real, AuxClasses}
-    nSteps = length(history)
-    nSteps > 0 || throw(ArgumentError("Cannot convert empty history to table"))
-
-    # Determine maximum dimensions and count total rows
-    dims = _getMaxDimensions(historyList(history))
-    nRows = sum(numSpecies(comm) for comm in historyList(history))
-
-    # Initialize table as an ordered dictionary of vectors to preserve column order
     table = OrderedDict{String, Vector{Union{T, Missing, Int}}}()
+    table[indexColName] = Vector{Int}(undef, nRows)
+    table["time"]       = Vector{T}(undef, nRows)
+    table["species"]    = Vector{Int}(undef, nRows)
 
-    # Initialize columns
-    table["mutNo"] = Vector{Int}(undef, nRows)
-    table["time"] = Vector{T}(undef, nRows)
-    table["species"] = Vector{Int}(undef, nRows)
-
-    # Add popsize columns
     for i in 1:dims.maxStageClasses
         table["popsize_$i"] = Vector{Union{T, Missing}}(undef, nRows)
     end
-
-    # Add trait columns
     for j in 1:dims.maxTraitDims
         table["trait_$j"] = Vector{Union{T, Missing}}(undef, nRows)
     end
-
-    # Add auxiliary variable columns
     for k in 1:dims.maxAuxVars
         for c in 1:dims.maxAuxComponents
             table["aux_$(k)_$(c)"] = Vector{Union{T, Missing}}(undef, nRows)
         end
     end
 
-    # Fill in the data row by row
     rowIdx = 1
-    for (mutEvent, comm) in enumerate(historyList(history))
+    for (i, comm) in enumerate(communities)
         nSpecies = numSpecies(comm)
         for sp in 1:nSpecies
-            # Basic info
-            table["mutNo"][rowIdx] = mutEvent - 1  # 0-indexed
-            table["time"][rowIdx] = comm.time
-            table["species"][rowIdx] = sp
+            table[indexColName][rowIdx] = indexColValues[i]
+            table["time"][rowIdx]       = comm.time
+            table["species"][rowIdx]    = sp
 
-            # Popsize data
             popsize_vals = popsizes(comm, sp)
-            for i in 1:dims.maxStageClasses
-                table["popsize_$i"][rowIdx] = i <= length(popsize_vals) ? popsize_vals[i] : missing
+            for k in 1:dims.maxStageClasses
+                table["popsize_$k"][rowIdx] = k <= length(popsize_vals) ? popsize_vals[k] : missing
             end
 
-            # Trait data
             trait_vals = traits(comm, sp)
             for j in 1:dims.maxTraitDims
                 table["trait_$j"][rowIdx] = j <= length(trait_vals) ? trait_vals[j] : missing
             end
 
-            # Auxiliary variable data (same for all species in this mutation event)
             aux_vars = auxs(comm)
             for k in 1:dims.maxAuxVars
                 for c in 1:dims.maxAuxComponents
@@ -824,6 +785,79 @@ function historyToTable(history::EvoHistory{T, AuxClasses}) where {T<:Real, AuxC
     end
 
     return table
+end
+
+
+"""
+    historyToTable(history::EvoHistory)
+
+Convert an EvoHistory to a tabular format suitable for saving as CSV/TSV.
+
+Returns an `OrderedDict` where keys are column names and values are vectors of the data.
+Each row represents one species at one mutation event, with multiple rows per mutation event.
+
+# Column structure
+- `mutNo`: Mutation event number (0 for initial community)
+- `time`: Integration time for the given step
+- `species`: Species index within the community
+- `popsize_i`: Population size in stage class i
+- `trait_j`: Trait value in dimension j
+- `aux_k_c`: Auxiliary variable k, component c (same for all species in a mutation event)
+
+The maximum number of stage classes, trait dimensions, and auxiliary variables
+across all communities determines the number of columns.
+
+# Example
+```julia
+history = evolve!(community, config, 100)
+table = historyToTable(history)
+
+# Save to CSV (requires DataFrames and CSV packages)
+using DataFrames, CSV
+df = DataFrame(table)
+CSV.write("evolution.csv", df)
+```
+"""
+function historyToTable(history::EvoHistory{T, AuxClasses}) where {T<:Real, AuxClasses}
+    length(history) > 0 || throw(ArgumentError("Cannot convert empty history to table"))
+    comms = historyList(history)
+    return _communityVecToTable(comms, "mutNo", collect(0:length(comms)-1))
+end
+
+
+"""
+    timeSeriesToTable(ts::Vector{<:Community})
+
+Convert a time series of communities (as returned by `ecoDynTimeSeries`) to a
+tabular format suitable for saving as CSV/TSV.
+
+Returns an `OrderedDict` where keys are column names and values are vectors of
+the data. Each row represents one species at one time step.
+
+# Column structure
+- `timeStep`: Index of the time step (1-based)
+- `time`: Simulation time at the given step
+- `species`: Species index within the community
+- `popsize_i`: Population size in stage class i
+- `trait_j`: Trait value in dimension j
+- `aux_k_c`: Auxiliary variable k, component c (same for all species at a time step)
+
+# Example
+```julia
+ts = ecoDynTimeSeries(community, config; stepsize = 10)
+table = timeSeriesToTable(ts)
+
+# Save to CSV (requires DataFrames and CSV packages)
+using DataFrames, CSV
+df = DataFrame(table)
+CSV.write("dynamics.csv", df)
+```
+"""
+function timeSeriesToTable(
+        ts::Vector{<:Community{T, AuxClasses}}
+    ) where {T<:Real, AuxClasses}
+    length(ts) > 0 || throw(ArgumentError("Cannot convert empty time series to table"))
+    return _communityVecToTable(ts, "timeStep", collect(1:length(ts)))
 end
 
 

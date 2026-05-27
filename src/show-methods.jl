@@ -46,6 +46,24 @@ function Base.show(io::IO, h::EvoHistory)
 end
 
 
+function Base.show(io::IO, ts::Vector{<:Community})
+    n = length(ts)
+    if n == 0
+        print(io, "EcoDynTimeSeries (empty)")
+        return
+    end
+    t0     = ts[1].time
+    tn     = ts[end].time
+    ns     = numSpecies(ts[end])
+    plural = n == 1 ? "" : "s"
+    print(io, "EcoDynTimeSeries ($n snapshot$plural, t = $t0 to $tn, $ns species)")
+end
+
+function Base.show(io::IO, ::MIME"text/plain", ts::Vector{<:Community})
+    show(io, ts)
+end
+
+
 function Base.show(io::IO, params::IntegrationParams)
     println(io, "IntegrationParams:")
     println(io, "  maxTime:   $(params.maxTime)")

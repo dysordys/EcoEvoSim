@@ -28,7 +28,8 @@ export PopulationSize, Phenotype, Species, Community, EvoHistory,
        ecoDyn, ecoDynTimeSeries, singleEvoStep,
        evolve, unpackCommunity, packCommunity, lotkaVolterra,
        plotEvo, plotEvoTwoTrait, plotEvoTwoTraitInteractive,
-       niceTickInterval, historyToTable, historyList, filterHistory, lastCommunity,
+       niceTickInterval, historyToTable, timeSeriesToTable,
+       historyList, filterHistory, lastCommunity,
        unstructuredModel, structuredModel,
        DynamicSS, SSRootfind, FunctionMap, DiscreteSS
 
