@@ -9,8 +9,8 @@ end
 
 
 function Base.show(io::IO, sp::Species)
-    density_vals = Vector(sp.popsize.popsize)
-    trait_vals = Vector(sp.trait.trait)
+    density_vals = Vector(popsize(sp))
+    trait_vals = Vector(trait(sp))
     println(io, "- popsize:   $density_vals")
     println(io, "- phenotype: $trait_vals")
 end
@@ -19,7 +19,7 @@ end
 function Base.show(
         io::IO, comm::Community{T, AuxClasses}
     ) where {T, AuxClasses}
-    println(io, "Community (t = $(comm.time))")
+    println(io, "Community (t = $(commTime(comm)))")
     for (i, sp) in enumerate(comm.species)
         println(io, "  Species $i:")
         buf = IOBuffer()

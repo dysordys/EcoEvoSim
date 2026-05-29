@@ -80,6 +80,67 @@ end
 
 
 
+# Primitive selectors on individual wrapper types
+# These eliminate double-field access (e.g. sp.popsize.popsize → popsize(sp))
+# and let higher-level selectors compose through dispatch.
+
+"""
+    popsize(ps::PopulationSize)
+
+Return the population size vector from a `PopulationSize` wrapper.
+
+# Example
+```julia
+ps = PopulationSize([5.0, 15.0])
+v = popsize(ps)  # Returns [5.0, 15.0]
+```
+"""
+popsize(ps::PopulationSize) = ps.popsize
+
+
+"""
+    popsize(sp::Species)
+
+Return the population size vector from a `Species`.
+
+# Example
+```julia
+sp = Species(5.0, 0.1)
+v = popsize(sp)  # Returns [5.0]
+```
+"""
+popsize(sp::Species) = popsize(sp.popsize)
+
+
+"""
+    trait(ph::Phenotype)
+
+Return the trait vector from a `Phenotype` wrapper.
+
+# Example
+```julia
+ph = Phenotype([0.5, -0.2])
+v = trait(ph)  # Returns [0.5, -0.2]
+```
+"""
+trait(ph::Phenotype) = ph.trait
+
+
+"""
+    trait(sp::Species)
+
+Return the trait vector from a `Species`.
+
+# Example
+```julia
+sp = Species(5.0, 0.1)
+v = trait(sp)  # Returns [0.1]
+```
+"""
+trait(sp::Species) = trait(sp.trait)
+
+
+
 # Functions for extracting species' population sizes from a community
 
 """
@@ -112,24 +173,24 @@ function popsizes(comm::Community, i::Integer)
     1 <= i <= numSp || throw(ArgumentError(
         "Species index $i out of bounds (community has $numSp species)"
     ))
-    speciesList(comm)[i].popsize.popsize
+    popsize(speciesList(comm)[i])
 end
 
 
 function popsizes(comm::Community)
-    [sp.popsize.popsize for sp in speciesList(comm)]
+    [popsize(sp) for sp in speciesList(comm)]
 end
 
 
 function popsizes(comm::Community, indices)
     speciesVec = speciesList(comm)
     numSp = length(speciesVec)
-    result = Vector{typeof(speciesVec[1].popsize.popsize)}()
+    result = Vector{typeof(popsize(speciesVec[1]))}()
     for i in indices
         1 <= i <= numSp || throw(ArgumentError(
             "Species index $i out of bounds (community has $numSp species)"
         ))
-        push!(result, speciesVec[i].popsize.popsize)
+        push!(result, popsize(speciesVec[i]))
     end
     return result
 end
@@ -241,24 +302,24 @@ function traits(comm::Community, i::Integer)
     1 <= i <= numSp || throw(ArgumentError(
         "Species index $i out of bounds (community has $numSp species)"
     ))
-    speciesList(comm)[i].trait.trait
+    trait(speciesList(comm)[i])
 end
 
 
 function traits(comm::Community)
-    [sp.trait.trait for sp in speciesList(comm)]
+    [trait(sp) for sp in speciesList(comm)]
 end
 
 
 function traits(comm::Community, indices)
     speciesVec = speciesList(comm)
     numSp = length(speciesVec)
-    result = Vector{typeof(speciesVec[1].trait.trait)}()
+    result = Vector{typeof(trait(speciesVec[1]))}()
     for i in indices
         1 <= i <= numSp || throw(ArgumentError(
             "Species index $i out of bounds (community has $numSp species)"
         ))
-        push!(result, speciesVec[i].trait.trait)
+        push!(result, trait(speciesVec[i]))
     end
     return result
 end
@@ -318,6 +379,21 @@ function auxs(comm::Community, indices)
     end
     return result
 end
+
+
+"""
+    commTime(comm::Community)
+
+Return the time stamp of a community. Named `commTime` (rather than `time`)
+to avoid shadowing `Base.time`.
+
+# Example
+```julia
+comm = Community([1.0, 2.0], [0.1, 0.2], Float64[])
+t = commTime(comm)  # Returns 0.0
+```
+"""
+commTime(comm::Community) = comm.time
 
 
 

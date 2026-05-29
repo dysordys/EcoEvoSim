@@ -18,6 +18,7 @@ include("show-methods.jl")
 
 
 export PopulationSize, Phenotype, Species, Community, EvoHistory,
+       popsize, trait, commTime,
        speciesList, popsizes, traits, auxs, numSpecies, speciesIndices,
        popsizesToMatrix, randomSpecies, weightedRandomSpecies,
        speciesBelowThreshold, removeExtinct, traitSpaceDim, numStages, addSpecies,

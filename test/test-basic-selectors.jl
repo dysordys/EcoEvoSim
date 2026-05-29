@@ -122,19 +122,19 @@ numTests = 50
             all_pops = popsizes(comm)
             @test length(all_pops) == numSpecies
             for i in 1:numSpecies
-                @test all_pops[i] === sps[i].popsize.popsize
+                @test all_pops[i] === popsize(sps[i])
             end
 
             # Test single index
             for i in 1:numSpecies
-                @test popsizes(comm, i) === sps[i].popsize.popsize
+                @test popsizes(comm, i) === popsize(sps[i])
             end
 
             # Test collection of indices
             if numSpecies >= 2
                 indices = [1, 2]
                 result = popsizes(comm, indices)
-                @test result == [sps[1].popsize.popsize, sps[2].popsize.popsize]
+                @test result == [popsize(sps[1]), popsize(sps[2])]
             end
         end
     end
@@ -158,7 +158,7 @@ numTests = 50
             M = popsizesToMatrix(comm)
             @test size(M) == (numSpecies, nstage)
             for i in 1:numSpecies, j in 1:nstage
-                @test M[i, j] == sps[i].popsize.popsize[j]
+                @test M[i, j] == popsize(sps[i])[j]
             end
         end
 
@@ -191,19 +191,19 @@ numTests = 50
             all_traits = traits(comm)
             @test length(all_traits) == numSpecies
             for i in 1:numSpecies
-                @test all_traits[i] === sps[i].trait.trait
+                @test all_traits[i] === trait(sps[i])
             end
 
             # Test single index
             for i in 1:numSpecies
-                @test traits(comm, i) === sps[i].trait.trait
+                @test traits(comm, i) === trait(sps[i])
             end
 
             # Test collection of indices
             if numSpecies >= 2
                 indices = [1, 2]
                 result = traits(comm, indices)
-                @test result == [sps[1].trait.trait, sps[2].trait.trait]
+                @test result == [trait(sps[1]), trait(sps[2])]
             end
         end
     end
@@ -366,6 +366,66 @@ numTests = 50
         T = Float64
         comm = Community(Species{T}[], PopulationSize{T}[])
         @test_throws ArgumentError numStages(comm)
+    end
+
+    @testset "testing_popsize_on_PopulationSize" begin
+        for _ in 1:numTests
+            T = Float64
+            v = rand(T, rand(1:4))
+            ps = PopulationSize(v)
+            @test popsize(ps) === ps.popsize
+            @test popsize(ps) == v
+        end
+    end
+
+    @testset "testing_popsize_on_Species" begin
+        for _ in 1:numTests
+            T = Float64
+            v = rand(T, rand(1:4))
+            ps = PopulationSize(v)
+            ph = Phenotype(rand(T, rand(1:3)))
+            sp = Species(ps, ph)
+            @test popsize(sp) === ps.popsize
+            @test popsize(sp) == v
+        end
+    end
+
+    @testset "testing_trait_on_Phenotype" begin
+        for _ in 1:numTests
+            T = Float64
+            v = rand(T, rand(1:4))
+            ph = Phenotype(v)
+            @test trait(ph) === ph.trait
+            @test trait(ph) == v
+        end
+    end
+
+    @testset "testing_trait_on_Species" begin
+        for _ in 1:numTests
+            T = Float64
+            v = rand(T, rand(1:4))
+            ps = PopulationSize(rand(T, rand(1:3)))
+            ph = Phenotype(v)
+            sp = Species(ps, ph)
+            @test trait(sp) === ph.trait
+            @test trait(sp) == v
+        end
+    end
+
+    @testset "testing_commTime" begin
+        for _ in 1:numTests
+            T = Float64
+            sps = [Species(PopulationSize(rand(T)), Phenotype(rand(T))) for _ in 1:rand(1:5)]
+            t = rand(T)
+            comm = Community(sps, PopulationSize{T}[], t)
+            @test commTime(comm) == t
+            @test commTime(comm) === comm.time
+        end
+        # Default time is zero
+        T = Float64
+        comm0 = Community([Species(PopulationSize(rand(T)), Phenotype(rand(T)))],
+                          PopulationSize{T}[])
+        @test commTime(comm0) == 0.0
     end
 
 end

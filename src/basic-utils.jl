@@ -215,7 +215,7 @@ comm2 = addSpecies(comm, new_sp)
 """
 function addSpecies(comm::Community, sp::Species)
     newSpeciesList = [speciesList(comm); sp]
-    Community(newSpeciesList, auxs(comm), comm.time)
+    Community(newSpeciesList, auxs(comm), commTime(comm))
 end
 
 
@@ -226,7 +226,7 @@ end
 
 function addSpecies(comm::Community, species_vec::Vector)
     newSpeciesList = [speciesList(comm); species_vec]
-    Community(newSpeciesList, auxs(comm), comm.time)
+    Community(newSpeciesList, auxs(comm), commTime(comm))
 end
 
 
@@ -287,7 +287,7 @@ function changePopsizes(
         push!(newSpecies, newSp)
     end
 
-    Community(newSpecies, auxs(comm), comm.time)
+    Community(newSpecies, auxs(comm), commTime(comm))
 end
 
 
@@ -315,7 +315,7 @@ function changePopsizes(
         push!(newSpecies, newSp)
     end
 
-    Community(newSpecies, auxs(comm), comm.time)
+    Community(newSpecies, auxs(comm), commTime(comm))
 end
 
 
@@ -371,7 +371,7 @@ function changeTraits(
         push!(newSpecies, newSp)
     end
 
-    Community(newSpecies, auxs(comm), comm.time)
+    Community(newSpecies, auxs(comm), commTime(comm))
 end
 
 
@@ -399,7 +399,7 @@ function changeTraits(
         push!(newSpecies, newSp)
     end
 
-    Community(newSpecies, auxs(comm), comm.time)
+    Community(newSpecies, auxs(comm), commTime(comm))
 end
 
 
@@ -451,13 +451,13 @@ function selectTraitDim(
     oldSpecies = speciesList(comm)
     newSpecies = Species{T}[]
     for sp in oldSpecies
-        traitVec = sp.trait.trait  # Get the trait vector
+        traitVec = trait(sp)  # Get the trait vector
         selectedTrait = Phenotype(traitVec[dimIndex])  # Extract single dimension
         newSp = Species{T}(sp.popsize, selectedTrait)
         push!(newSpecies, newSp)
     end
 
-    Community(newSpecies, auxs(comm), comm.time)
+    Community(newSpecies, auxs(comm), commTime(comm))
 end
 
 
@@ -517,14 +517,14 @@ function selectTraitDim(
     oldSpecies = speciesList(comm)
     newSpecies = Species{T}[]
     for sp in oldSpecies
-        traitVec = sp.trait.trait  # Get the trait vector
+        traitVec = trait(sp)  # Get the trait vector
         selectedTraits = [traitVec[i] for i in dimIndices]  # Extract selected dimensions
         newTrait = Phenotype(selectedTraits)
         newSp = Species{T}(sp.popsize, newTrait)
         push!(newSpecies, newSp)
     end
 
-    Community(newSpecies, auxs(comm), comm.time)
+    Community(newSpecies, auxs(comm), commTime(comm))
 end
 
 
@@ -559,7 +559,7 @@ function removeSpecies(comm::Community, index::Integer)
 
     oldSpecies = speciesList(comm)
     newSpecies = [oldSpecies[i] for i in 1:numSp if i != index]
-    Community(newSpecies, auxs(comm), comm.time)
+    Community(newSpecies, auxs(comm), commTime(comm))
 end
 
 
@@ -578,7 +578,7 @@ function removeSpecies(comm::Community, indices)
 
     # Keep species not in the removal set
     newSpecies = [oldSpecies[i] for i in 1:numSp if i ∉ indices_set]
-    Community(newSpecies, auxs(comm), comm.time)
+    Community(newSpecies, auxs(comm), commTime(comm))
 end
 
 
@@ -711,7 +711,7 @@ function orderByTrait(comm::Community, n::Integer)
     oldSpecies = speciesList(comm)
     newSpecies = [oldSpecies[i] for i in sorted_indices]
 
-    Community(newSpecies, auxs(comm), comm.time)
+    Community(newSpecies, auxs(comm), commTime(comm))
 end
 
 
@@ -754,7 +754,7 @@ function _communityVecToTable(
         nSpecies = numSpecies(comm)
         for sp in 1:nSpecies
             table[indexColName][rowIdx] = indexColValues[i]
-            table["time"][rowIdx]       = comm.time
+            table["time"][rowIdx]       = commTime(comm)
             table["species"][rowIdx]    = sp
 
             popsize_vals = popsizes(comm, sp)

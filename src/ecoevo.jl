@@ -158,7 +158,7 @@ function unpackCommunity(community::Community{T, AuxClasses}) where {T<:Real, Au
 
     # Add all population sizes (flattened across species and stage classes)
     for sp in speciesList(community)
-        append!(u0, sp.popsize.popsize)
+        append!(u0, popsize(sp))
     end
 
     # Add auxiliary variables
@@ -188,7 +188,7 @@ function packCommunity(
 
     # Reconstruct each species
     for sp in speciesList(community)
-        stageClasses = length(sp.popsize.popsize)
+        stageClasses = length(popsize(sp))
         newPopsize = PopulationSize(u[idx:idx+stageClasses-1])
         newSpecies_i = Species(newPopsize, sp.trait)
         push!(newSpecies, newSpecies_i)
@@ -252,7 +252,7 @@ function ecoDyn(
         prob = SteadyStateProblem(ode_fn, u0)
         sol = solve(prob, effective_alg; config.integrationParams.solver_options...)
         u_final = sol.u
-        t_final = community.time
+        t_final = commTime(community)
     elseif alg isa SSRootfind
         # SSRootfind uses initial conditions as a starting guess for rootfinding
         prob = SteadyStateProblem(ode_fn, u0)
@@ -260,11 +260,11 @@ function ecoDyn(
                     config.integrationParams.solver_options...)
         u_final = sol.u
         # For rootfinding, time is meaningless - keep original time
-        t_final = community.time
+        t_final = commTime(community)
     elseif alg isa FunctionMap
         # Discrete-time recursion: interpret the factory output as u(t+1) = f(u(t), p, t)
         # rather than a derivative.  maxTime is the number of discrete steps.
-        tspan = (community.time, community.time + config.integrationParams.maxTime)
+        tspan = (commTime(community), commTime(community) + config.integrationParams.maxTime)
         prob = DiscreteProblem(ode_fn, u0, tspan)
         sol = solve(prob, FunctionMap(); config.integrationParams.solver_options...)
         u_final = sol.u[end]
@@ -278,7 +278,7 @@ function ecoDyn(
         maxSteps   = isfinite(config.integrationParams.maxTime) ?
                          round(Int, config.integrationParams.maxTime) : typemax(Int)
         u   = copy(u0)
-        t   = community.time
+        t   = commTime(community)
         for _ in 1:maxSteps
             u_new = ode_fn(u, nothing, t)
             if norm(u_new .- u) < abstol_val + reltol_val * norm(u)
@@ -292,7 +292,7 @@ function ecoDyn(
         t_final = t
     else
         # Use ODEProblem for time-integration solvers
-        tspan = (community.time, community.time + config.integrationParams.maxTime)
+        tspan = (commTime(community), commTime(community) + config.integrationParams.maxTime)
         prob = ODEProblem(ode_fn, u0, tspan)
         sol = solve(prob, config.integrationParams.algorithm;
                     config.integrationParams.solver_options...)
@@ -352,7 +352,7 @@ function ecoDynTimeSeries(
     opts   = config.integrationParams.solver_options
 
     if alg isa FunctionMap
-        tspan = (community.time, community.time + config.integrationParams.maxTime)
+        tspan = (commTime(community), commTime(community) + config.integrationParams.maxTime)
         prob  = DiscreteProblem(ode_fn, u0, tspan)
         sol   = stepsize !== nothing ?
             solve(prob, FunctionMap(); opts..., saveat = stepsize) :
@@ -366,7 +366,7 @@ function ecoDynTimeSeries(
         maxSteps   = isfinite(config.integrationParams.maxTime) ?
                          round(Int, config.integrationParams.maxTime) : typemax(Int)
         u      = copy(u0)
-        t      = community.time
+        t      = commTime(community)
         states = [packCommunity(u, community, t)]
         for _ in 1:maxSteps
             u_new     = ode_fn(u, nothing, t)
@@ -380,7 +380,7 @@ function ecoDynTimeSeries(
 
     else
         # Continuous-time ODE
-        tspan = (community.time, community.time + config.integrationParams.maxTime)
+        tspan = (commTime(community), commTime(community) + config.integrationParams.maxTime)
         prob  = ODEProblem(ode_fn, u0, tspan)
         sol   = stepsize !== nothing ?
             solve(prob, alg; opts..., saveat = stepsize) :
@@ -429,7 +429,7 @@ function generateMutant(
 
     # Create new community with mutant appended
     newSpeciesList = vcat(speciesList(community), mutantSpecies)
-    Community(newSpeciesList, community.aux, community.time)
+    Community(newSpeciesList, community.aux, commTime(community))
 end
 
 
@@ -528,7 +528,7 @@ function generateMutantSpatial(
     # This is used to determine probability of mutant appearing in each patch
     patchPopulations = zeros(T, nPatches)
     for sp in speciesList(community)
-        patchPopulations .+= sp.popsize.popsize
+        patchPopulations .+= popsize(sp)
     end
 
     # Check that at least one patch has positive population
@@ -559,7 +559,7 @@ function generateMutantSpatial(
 
     # Create new community with mutant appended
     newSpeciesList = vcat(speciesList(community), mutantSpecies)
-    Community(newSpeciesList, community.aux, community.time)
+    Community(newSpeciesList, community.aux, commTime(community))
 end
 
 
