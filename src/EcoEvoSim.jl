@@ -5,6 +5,7 @@ using Distributions
 using LinearAlgebra
 using OrdinaryDiffEq
 using SteadyStateDiffEq
+using NonlinearSolve
 using OrderedCollections
 
 
