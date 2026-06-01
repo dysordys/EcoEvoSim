@@ -1422,4 +1422,119 @@ numTests = 50
         @test historyA !== historyC
     end
 
+
+    @testset "testing_multi_config_singleEvoStep" begin
+        # Mutation should come from the first config's mutationGenerator;
+        # both configs' ecoDyn stages should be applied in sequence.
+        species = [Species(5.0, [0.3]), Species(5.0, [0.6])]
+        comm = Community(species, PopulationSize{Float64}[], 0.0)
+
+        # Stage 1: slow decay
+        factory1 = (c) -> (u, p, t) -> -0.01 * u
+        mutGen = generateMutant(invaderPopsize=1.0, variance=0.01)
+        params1 = IntegrationParams(maxTime=1.0, abstol=1e-8, reltol=1e-6)
+        config1 = EcoEvoConfig(
+            ecoDyn=factory1, mutationGenerator=mutGen,
+            integrationParams=params1, extThreshold=1e-10
+        )
+
+        # Stage 2: further slow decay
+        factory2 = (c) -> (u, p, t) -> -0.01 * u
+        params2 = IntegrationParams(maxTime=1.0, abstol=1e-8, reltol=1e-6)
+        config2 = EcoEvoConfig(
+            ecoDyn=factory2, mutationGenerator=noMutation,
+            integrationParams=params2, extThreshold=1e-10
+        )
+
+        configs = [config1, config2]
+        result = singleEvoStep(comm, configs)
+
+        # Mutation was applied: one extra species
+        @test numSpecies(result) == numSpecies(comm) + 1
+
+        # Time advanced by both stages (2 × maxTime = 2.0)
+        @test result.time ≈ comm.time + 2.0
+
+        # All population sizes are positive
+        for i in 1:numSpecies(result)
+            @test popsizes(result, i)[1] > 0.0
+        end
+    end
+
+
+    @testset "testing_multi_config_singleEvoStep_equivalence" begin
+        # Result of singleEvoStep(comm, [c1, c2]) should equal manually chaining:
+        #   ecoDyn(mutationGenerator(comm), c1) |> c -> ecoDyn(c, c2)
+        species = [Species(4.0, [0.4]), Species(4.0, [0.7])]
+        comm = Community(species, PopulationSize{Float64}[], 0.0)
+
+        factory = (c) -> (u, p, t) -> -0.02 * u
+        mutGen = generateMutant(invaderPopsize=0.5, variance=0.005)
+        params = IntegrationParams(maxTime=0.5, abstol=1e-10, reltol=1e-8)
+
+        config1 = EcoEvoConfig(
+            ecoDyn=factory, mutationGenerator=mutGen,
+            integrationParams=params, extThreshold=1e-10
+        )
+        config2 = EcoEvoConfig(
+            ecoDyn=factory, mutationGenerator=noMutation,
+            integrationParams=params, extThreshold=1e-10
+        )
+
+        # Multi-config path
+        Random.seed!(42)
+        resultMulti = singleEvoStep(comm, [config1, config2])
+
+        # Manual equivalent
+        Random.seed!(42)
+        afterMutation = config1.mutationGenerator(comm)
+        afterStage1   = ecoDyn(afterMutation, config1)
+        afterStage1   = removeExtinct(afterStage1, config1.extThreshold)
+        afterStage2   = ecoDyn(afterStage1, config2)
+        afterStage2   = removeExtinct(afterStage2, config2.extThreshold)
+
+        @test numSpecies(resultMulti) == numSpecies(afterStage2)
+        @test resultMulti.time ≈ afterStage2.time
+        for i in 1:numSpecies(resultMulti)
+            @test popsizes(resultMulti, i) ≈ popsizes(afterStage2, i)
+        end
+    end
+
+
+    @testset "testing_multi_config_evolve_history_length_and_time" begin
+        # evolve with a vector of configs should build a history of the right
+        # length and have monotonically increasing time.
+        species = [Species(6.0, [0.5])]
+        comm = Community(species, PopulationSize{Float64}[], 0.0)
+
+        factory = (c) -> (u, p, t) -> -0.005 * u
+        mutGen = generateMutant(invaderPopsize=1.0, variance=0.01)
+        params = IntegrationParams(maxTime=0.5, abstol=1e-8, reltol=1e-6)
+
+        config1 = EcoEvoConfig(
+            ecoDyn=factory, mutationGenerator=mutGen,
+            integrationParams=params, extThreshold=1e-10
+        )
+        config2 = EcoEvoConfig(
+            ecoDyn=factory, mutationGenerator=noMutation,
+            integrationParams=params, extThreshold=1e-10
+        )
+
+        nSteps = 4
+        history = evolve(comm, [config1, config2], nSteps; showProgress=false)
+
+        @test length(history.history) == 1 + nSteps
+        times = [c.time for c in history.history]
+        @test issorted(times)
+        @test times[end] > times[1]
+    end
+
+
+    @testset "testing_multi_config_evolve_empty_configs_error" begin
+        species = [Species(5.0, [0.5])]
+        comm = Community(species, PopulationSize{Float64}[], 0.0)
+        @test_throws ArgumentError singleEvoStep(comm, EcoEvoConfig[])
+        @test_throws ArgumentError evolve(comm, EcoEvoConfig[], 1; showProgress=false)
+    end
+
 end

@@ -647,6 +647,42 @@ end
 
 
 """
+    singleEvoStep(community, configs::AbstractVector)
+
+Multi-stage variant of [`singleEvoStep`](@ref) that chains several integration
+stages within a single evolutionary step.
+
+The **first** element of `configs` supplies the mutation generator; every
+element supplies its own `ecoDyn` + `extThreshold` stage, applied in sequence.
+This is useful for a two-step equilibration strategy: integrate away fast
+transients with one solver, then polish with a Newton-based rootfinder:
+
+```julia
+configEvo    = EcoEvoConfig(lotkaVolterra(...), generateMutant(...),
+                            IntegrationParams(2000.0, Rodas5()), 0.003)
+configPolish = EcoEvoConfig(lotkaVolterra(...), noMutation,
+                            IntegrationParams(1e8, SSRootfind();
+                                             abstol=1e-12, reltol=1e-12), 0.003)
+history = evolve(community, [configEvo, configPolish], nSteps)
+```
+"""
+function singleEvoStep(
+        community::Community{TC, AuxClasses},
+        configs::AbstractVector
+    ) where {TC<:Real, AuxClasses}
+    isempty(configs) && throw(ArgumentError("configs must be non-empty"))
+    # Mutation from the first config only
+    c = configs[1].mutationGenerator(community)
+    # Apply each config's ecoDyn + extinction removal in sequence
+    for cfg in configs
+        c = ecoDyn(c, cfg)
+        c = removeExtinct(c, cfg.extThreshold)
+    end
+    return c
+end
+
+
+"""
     evolve!(history::EvoHistory{TC, AuxClasses}, config::EcoEvoConfig{TE},
             nMutEvents::Int) where {TC<:Real, TE<:Real, AuxClasses}
 
@@ -820,4 +856,93 @@ function evolve(
     # For Community, this is equivalent to evolve! since we always create new history
     # But we provide it for consistency
     return evolve!(community, config, nMutEvents; showProgress=showProgress)
+end
+
+
+# ── Multi-stage evolve overloads (AbstractVector of configs) ─────────────────
+
+"""
+    evolve!(history::EvoHistory, configs::AbstractVector, nMutEvents; showProgress=true)
+
+Multi-stage variant of [`evolve!`](@ref) that uses several integration stages
+per evolutionary step.  See [`singleEvoStep(community, configs)`](@ref) for the
+per-step semantics (mutation from `configs[1]`; each config's `ecoDyn` +
+`extThreshold` applied in sequence).
+"""
+function evolve!(
+        history::EvoHistory{TC, AuxClasses},
+        configs::AbstractVector,
+        nMutEvents::Int;
+        showProgress::Bool = true
+    ) where {TC<:Real, AuxClasses}
+    nMutEvents >= 0 || throw(ArgumentError("nMutEvents must be non-negative"))
+    isempty(configs) && throw(ArgumentError("configs must be non-empty"))
+    length(history.history) > 0 ||
+        throw(ArgumentError("History must contain at least one community"))
+    currentComm = history.history[end]
+
+    if showProgress
+        print_interval = max(1, div(nMutEvents, 100))
+    end
+
+    for i in 1:nMutEvents
+        currentComm = singleEvoStep(currentComm, configs)
+        push!(history.history, currentComm)
+
+        if showProgress && (i % print_interval == 0 || i == nMutEvents)
+            pct = round(100 * i / nMutEvents, digits=1)
+            print("\rProgress: $i / $nMutEvents ($pct%)")
+            flush(stdout)
+        end
+    end
+    showProgress && println()
+
+    return history
+end
+
+"""
+    evolve!(community::Community, configs::AbstractVector, nMutEvents; showProgress=true)
+
+Multi-stage variant of [`evolve!`](@ref) starting from a `Community`.
+"""
+function evolve!(
+        community::Community{TC, AuxClasses},
+        configs::AbstractVector,
+        nMutEvents::Int;
+        showProgress::Bool = true
+    ) where {TC<:Real, AuxClasses}
+    history = EvoHistory(community)
+    evolve!(history, configs, nMutEvents; showProgress=showProgress)
+    return history
+end
+
+"""
+    evolve(history::EvoHistory, configs::AbstractVector, nMutEvents; showProgress=true)
+
+Non-mutating multi-stage variant of [`evolve`](@ref).  See
+[`singleEvoStep(community, configs)`](@ref) for the per-step semantics.
+"""
+function evolve(
+        history::EvoHistory{TC, AuxClasses},
+        configs::AbstractVector,
+        nMutEvents::Int;
+        showProgress::Bool = true
+    ) where {TC<:Real, AuxClasses}
+    history_copy = EvoHistory{TC, AuxClasses}(deepcopy(history.history))
+    evolve!(history_copy, configs, nMutEvents; showProgress=showProgress)
+    return history_copy
+end
+
+"""
+    evolve(community::Community, configs::AbstractVector, nMutEvents; showProgress=true)
+
+Non-mutating multi-stage variant of [`evolve`](@ref) starting from a `Community`.
+"""
+function evolve(
+        community::Community{TC, AuxClasses},
+        configs::AbstractVector,
+        nMutEvents::Int;
+        showProgress::Bool = true
+    ) where {TC<:Real, AuxClasses}
+    return evolve!(community, configs, nMutEvents; showProgress=showProgress)
 end
