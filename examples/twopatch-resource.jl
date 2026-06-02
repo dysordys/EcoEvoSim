@@ -1,6 +1,5 @@
 using EcoEvoSim
 using Plots
-using Distributions
 using Random
 
 
@@ -14,7 +13,7 @@ function patchMortality(community, d, theta, sigma, beta, eta, chi)
     m_base = (beta * eta) / chi  # Baseline mortality rate
     mort = zeros(nSpecies, length(y))
     for i in 1:nSpecies
-        niche_benefit = theta .* pdf.(Normal.(y, sigma), spTraits[i][1])
+        niche_benefit = theta .* (1 .- (spTraits[i][1] .- y).^2)
         mort[i, :] = m_base .- niche_benefit
     end
     return mort
@@ -99,6 +98,6 @@ Random.seed!(54321)
 
 lineage = Community([1.0 1.0;], [-0.2], [1.0, 1.0])
 lineage = ecoDyn(lineage, config)
-@time lineage = evolve(lineage, config, 1000);
+@time lineage = evolve(lineage, config, 1500);
 
 p = plotEvo(lineage)

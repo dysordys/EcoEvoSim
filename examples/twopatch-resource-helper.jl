@@ -3,8 +3,6 @@
 
 using EcoEvoSim
 using Plots
-using OrdinaryDiffEq
-using Distributions
 using Random
 
 
@@ -19,8 +17,8 @@ ecology = structuredModel(
         [aux[k] * (eta - chi * aux[k]) - gamma * sum(n[i, k] for i in 1:nSpecies) * aux[k]
          for k in 1:nPatches]
 ) do i, j, n, z, aux, nSpecies, nPatches
-    mort = m_base - theta * pdf(Normal(y[j], sigma), z[i][1])
-    (beta * aux[j] - mort - mu) * n[i, j] + mu * sum(n[i, k] for k in 1:nPatches if k != j)
+    mort = m_base .- theta .* (1 .- (z[i][1] .- y).^2)
+    (beta * aux[j] - mort[j] - mu) * n[i, j] + mu * sum(n[i, k] for k in 1:nPatches if k != j)
 end
 
 
@@ -42,6 +40,6 @@ Random.seed!(54321)
 
 lineage = Community([1.0 1.0;], [-0.2], [1.0, 1.0])
 lineage = ecoDyn(lineage, config)
-@time lineage = evolve(lineage, config, 1000);
+@time lineage = evolve(lineage, config, 1500);
 
 p = plotEvo(lineage)

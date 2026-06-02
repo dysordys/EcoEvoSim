@@ -305,6 +305,35 @@ end
 
 
 """
+    ecoDyn(community::Community, configs::AbstractVector)
+
+Multi-stage variant of [`ecoDyn`](@ref) that applies each config's ecological
+dynamics in sequence, with extinction removal after each stage.  The first
+config's `ecoDyn` is applied to `community`, the second to the result of the
+first, and so on.
+
+Useful for a two-step equilibration strategy where a transient ODE integration
+(e.g. `DynamicSS`) is followed by a Newton polish (e.g. `SSRootfind`):
+
+```julia
+ecoDyn(community, [configTransient, configPolish])
+```
+"""
+function ecoDyn(
+        community::Community{TC, AuxClasses},
+        configs::AbstractVector
+    ) where {TC<:Real, AuxClasses}
+    isempty(configs) && throw(ArgumentError("configs must be non-empty"))
+    c = community
+    for cfg in configs
+        c = ecoDyn(c, cfg)
+        c = removeExtinct(c, cfg.extThreshold)
+    end
+    return c
+end
+
+
+"""
     ecoDynTimeSeries(community::Community{TC, AuxClasses}, config::EcoEvoConfig{TE};
                      stepsize=nothing) where {TC<:Real, TE<:Real, AuxClasses}
 

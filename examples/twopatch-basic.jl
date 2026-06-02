@@ -1,6 +1,5 @@
 using EcoEvoSim
 using Plots
-using Distributions
 using Random
 
 
@@ -12,7 +11,7 @@ function patchGrowth(community, d)
     y = [d/2, -d/2]  # Optimal traits for each patch
     growth = zeros(nSpecies, length(y))
     for i in 1:nSpecies
-        growth[i, :] = pdf.(Normal(0, 1), spTraits[i] .- y)
+        growth[i, :] = 1 .- (spTraits[i] .- y).^2
     end
     return growth
 end
@@ -82,6 +81,6 @@ Random.seed!(54321)
 
 lineage = Community([1.0 1.0;], [-0.2])
 lineage = ecoDyn(lineage, config)
-@time lineage = evolve(lineage, config, 1000);
+@time lineage = evolve(lineage, config, 1500);
 
 p = plotEvo(lineage)

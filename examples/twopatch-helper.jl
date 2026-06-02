@@ -3,17 +3,17 @@
 
 using EcoEvoSim
 using Plots
-using Distributions
 using Random
 
 
-d = 1.0; mu = 0.1; alpha = 1.0
+d = 1.0
 y = [d/2, -d/2]
+mu = 0.1
 
-ecology = structuredModel() do i, j, n, z, aux, nSpecies, nPatches
-    growth = pdf(Normal(0, 1), z[i][1] - y[j])
-    dd = alpha * sum(n[k, j] for k in 1:nSpecies) # density dependence
-    (growth - dd - mu) * n[i, j] + mu * sum(n[i, k] for k in 1:nPatches if k != j)
+ecology = structuredModel() do i, k, n, z, aux, nSpecies, nPatches
+    localGrowth = 1 - (z[i][1] - y[k])^2 - sum(n[i,k] for i in 1:nSpecies)
+    l = k == 1 ? 2 : 1 # Non-focal patch index
+    (localGrowth - mu) * n[i,k] + mu * n[i,l]
 end
 
 
@@ -35,6 +35,6 @@ Random.seed!(54321)
 
 lineage = Community([1.0 1.0;], [-0.2])
 lineage = ecoDyn(lineage, config)
-@time lineage = evolve(lineage, config, 1000);
+@time lineage = evolve(lineage, config, 1500);
 
 p = plotEvo(lineage)
