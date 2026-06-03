@@ -583,6 +583,97 @@ end
 
 
 
+# Add/remove auxiliary variables
+
+"""
+    addAux(comm::Community, newAux::PopulationSize)
+    addAux(comm::Community, newAux::Real)
+    addAux(comm::Community, newAux::AbstractVector)
+
+Add an auxiliary variable to a community.
+
+Creates a new community with the auxiliary variable appended. Preserves species and time.
+Note that this changes the type of the returned community (`AuxClasses` increases by 1).
+
+# Arguments
+- `comm::Community`: The community to add to
+- `newAux`: The new auxiliary variable — a `PopulationSize`, scalar, or vector
+
+# Returns
+New community with one additional auxiliary variable
+
+# Example
+```julia
+comm = Community([1.0, 2.0], [0.1, 0.2], Float64[])  # No aux
+comm2 = addAux(comm, 5.0)                              # One scalar aux
+comm3 = addAux(comm2, [3.0, 4.0])                     # Add a 2-component aux
+```
+"""
+function addAux(comm::Community{T, AuxClasses}, newAux::PopulationSize{T}) where {T<:Real, AuxClasses}
+    newAuxList = [auxs(comm); newAux]
+    Community(speciesList(comm), newAuxList, commTime(comm))
+end
+
+function addAux(comm::Community{T, AuxClasses}, newAux::Real) where {T<:Real, AuxClasses}
+    addAux(comm, PopulationSize(T(newAux)))
+end
+
+function addAux(comm::Community{T, AuxClasses}, newAux::AbstractVector) where {T<:Real, AuxClasses}
+    addAux(comm, PopulationSize(Vector{T}(newAux)))
+end
+
+
+"""
+    removeAux(comm::Community, index::Integer)
+    removeAux(comm::Community, indices)
+
+Remove one or more auxiliary variables from a community.
+
+# Arguments
+- `comm::Community`: The community
+- `index::Integer`: Single aux index to remove
+- `indices`: Collection of aux indices to remove
+
+# Returns
+New community with specified auxiliary variables removed
+
+# Example
+```julia
+comm = Community([1.0, 2.0], [0.1, 0.2], [5.0, 3.0])
+comm2 = removeAux(comm, 1)       # Remove first aux var
+comm3 = removeAux(comm, [1, 2])  # Remove both aux vars
+```
+"""
+function removeAux(comm::Community{T, AuxClasses}, index::Integer) where {T<:Real, AuxClasses}
+    AuxClasses > 0 || throw(ArgumentError("Community has no auxiliary variables to remove"))
+    1 <= index <= AuxClasses || throw(ArgumentError(
+        "Aux index $index out of bounds (community has $AuxClasses auxiliary variables)"
+    ))
+
+    oldAux = auxs(comm)
+    newAuxList = [oldAux[i] for i in 1:AuxClasses if i != index]
+    Community(speciesList(comm), newAuxList, commTime(comm))
+end
+
+
+function removeAux(comm::Community{T, AuxClasses}, indices) where {T<:Real, AuxClasses}
+    AuxClasses > 0 || throw(ArgumentError("Community has no auxiliary variables to remove"))
+    oldAux = auxs(comm)
+
+    indices_set = Set{Int}()
+    for idx in indices
+        1 <= idx <= AuxClasses || throw(ArgumentError(
+            "Aux index $idx out of bounds (community has $AuxClasses auxiliary variables)"
+        ))
+        push!(indices_set, idx)
+    end
+
+    newAuxList = [oldAux[i] for i in 1:AuxClasses if i ∉ indices_set]
+    Community(speciesList(comm), newAuxList, commTime(comm))
+end
+
+
+
 # Find species below extinction threshold
 """
     speciesBelowThreshold(comm::Community, extThreshold::Real)

@@ -975,4 +975,194 @@ numTests = 50
         end
     end
 
+
+    @testset "testing_addAux_scalar" begin
+        for _ in 1:numTests
+            T = Float64
+            auxClasses = rand(0:3)
+            numSp = rand(1:5)
+            sps = [Species(PopulationSize(rand(T, rand(1:3))), Phenotype(rand(T, rand(1:3))))
+                   for _ in 1:numSp]
+            aux = [PopulationSize(rand(T)) for _ in 1:auxClasses]
+            time = rand(T)
+            comm = Community(sps, aux, time)
+
+            newVal = rand(T)
+            comm2 = addAux(comm, newVal)
+
+            @test length(auxs(comm2)) == auxClasses + 1
+            @test auxs(comm2)[end].popsize == [newVal]
+            @test auxs(comm2)[1:auxClasses] == aux
+            @test speciesList(comm2) == sps
+            @test comm2.time == time
+        end
+    end
+
+
+    @testset "testing_addAux_vector" begin
+        for _ in 1:numTests
+            T = Float64
+            auxClasses = rand(0:3)
+            numSp = rand(1:5)
+            sps = [Species(PopulationSize(rand(T, rand(1:3))), Phenotype(rand(T, rand(1:3))))
+                   for _ in 1:numSp]
+            aux = [PopulationSize(rand(T)) for _ in 1:auxClasses]
+            time = rand(T)
+            comm = Community(sps, aux, time)
+
+            newVec = rand(T, rand(2:4))
+            comm2 = addAux(comm, newVec)
+
+            @test length(auxs(comm2)) == auxClasses + 1
+            @test auxs(comm2)[end].popsize == newVec
+            @test auxs(comm2)[1:auxClasses] == aux
+            @test speciesList(comm2) == sps
+            @test comm2.time == time
+        end
+    end
+
+
+    @testset "testing_addAux_PopulationSize" begin
+        for _ in 1:numTests
+            T = Float64
+            auxClasses = rand(0:3)
+            numSp = rand(1:5)
+            sps = [Species(PopulationSize(rand(T, rand(1:3))), Phenotype(rand(T, rand(1:3))))
+                   for _ in 1:numSp]
+            aux = [PopulationSize(rand(T)) for _ in 1:auxClasses]
+            time = rand(T)
+            comm = Community(sps, aux, time)
+
+            newAux = PopulationSize(rand(T, rand(1:3)))
+            comm2 = addAux(comm, newAux)
+
+            @test length(auxs(comm2)) == auxClasses + 1
+            @test auxs(comm2)[end] == newAux
+            @test auxs(comm2)[1:auxClasses] == aux
+            @test speciesList(comm2) == sps
+            @test comm2.time == time
+        end
+    end
+
+
+    @testset "testing_addAux_chaining" begin
+        T = Float64
+        comm = Community([1.0, 2.0], [0.1, 0.2], Float64[])
+        @test length(auxs(comm)) == 0
+
+        comm1 = addAux(comm, 5.0)
+        @test length(auxs(comm1)) == 1
+        @test auxs(comm1)[1].popsize == [5.0]
+
+        comm2 = addAux(comm1, [3.0, 4.0])
+        @test length(auxs(comm2)) == 2
+        @test auxs(comm2)[1].popsize == [5.0]
+        @test auxs(comm2)[2].popsize == [3.0, 4.0]
+
+        comm3 = addAux(comm2, PopulationSize([7.0]))
+        @test length(auxs(comm3)) == 3
+        @test auxs(comm3)[3].popsize == [7.0]
+    end
+
+
+    @testset "testing_removeAux_single_index" begin
+        for _ in 1:numTests
+            T = Float64
+            auxClasses = rand(2:5)
+            numSp = rand(1:5)
+            sps = [Species(PopulationSize(rand(T, rand(1:3))), Phenotype(rand(T, rand(1:3))))
+                   for _ in 1:numSp]
+            aux = [PopulationSize(rand(T, rand(1:3))) for _ in 1:auxClasses]
+            time = rand(T)
+            comm = Community(sps, aux, time)
+
+            removeIdx = rand(1:auxClasses)
+            comm2 = removeAux(comm, removeIdx)
+
+            @test length(auxs(comm2)) == auxClasses - 1
+            remaining = [aux[i] for i in 1:auxClasses if i != removeIdx]
+            @test auxs(comm2) == remaining
+            @test speciesList(comm2) == sps
+            @test comm2.time == time
+        end
+    end
+
+
+    @testset "testing_removeAux_multiple_indices" begin
+        for _ in 1:numTests
+            T = Float64
+            auxClasses = rand(3:6)
+            numSp = rand(1:5)
+            sps = [Species(PopulationSize(rand(T, rand(1:3))), Phenotype(rand(T, rand(1:3))))
+                   for _ in 1:numSp]
+            aux = [PopulationSize(rand(T)) for _ in 1:auxClasses]
+            time = rand(T)
+            comm = Community(sps, aux, time)
+
+            numToRemove = rand(2:auxClasses-1)
+            removeIndices = sort(randperm(auxClasses)[1:numToRemove])
+            comm2 = removeAux(comm, removeIndices)
+
+            remove_set = Set(removeIndices)
+            remaining = [aux[i] for i in 1:auxClasses if i ∉ remove_set]
+            @test length(auxs(comm2)) == length(remaining)
+            @test auxs(comm2) == remaining
+            @test speciesList(comm2) == sps
+            @test comm2.time == time
+        end
+    end
+
+
+    @testset "testing_removeAux_all" begin
+        T = Float64
+        aux = [PopulationSize([1.0]), PopulationSize([2.0]), PopulationSize([3.0])]
+        comm = Community([Species(1.0, 0.1)], aux)
+
+        comm2 = removeAux(comm, [1, 2, 3])
+        @test length(auxs(comm2)) == 0
+        @test numSpecies(comm2) == 1
+    end
+
+
+    @testset "testing_removeAux_error_handling" begin
+        T = Float64
+
+        # No aux vars to remove
+        comm_no_aux = Community([Species(1.0, 0.1)], PopulationSize{T}[])
+        @test_throws ArgumentError removeAux(comm_no_aux, 1)
+        @test_throws ArgumentError removeAux(comm_no_aux, [1])
+
+        # Index out of bounds
+        aux = [PopulationSize([1.0]), PopulationSize([2.0])]
+        comm = Community([Species(1.0, 0.1)], aux)
+        @test_throws ArgumentError removeAux(comm, 0)
+        @test_throws ArgumentError removeAux(comm, 3)
+        @test_throws ArgumentError removeAux(comm, [1, 3])
+        @test_throws ArgumentError removeAux(comm, [0, 1])
+    end
+
+
+    @testset "testing_addAux_removeAux_roundtrip" begin
+        for _ in 1:numTests
+            T = Float64
+            auxClasses = rand(1:4)
+            numSp = rand(1:4)
+            sps = [Species(PopulationSize(rand(T, rand(1:3))), Phenotype(rand(T, rand(1:3))))
+                   for _ in 1:numSp]
+            aux = [PopulationSize(rand(T)) for _ in 1:auxClasses]
+            time = rand(T)
+            comm = Community(sps, aux, time)
+
+            # Add then remove the appended aux should recover original
+            newAux = PopulationSize(rand(T))
+            comm_added = addAux(comm, newAux)
+            comm_back = removeAux(comm_added, auxClasses + 1)
+
+            @test length(auxs(comm_back)) == auxClasses
+            @test auxs(comm_back) == aux
+            @test speciesList(comm_back) == sps
+            @test comm_back.time == time
+        end
+    end
+
 end
