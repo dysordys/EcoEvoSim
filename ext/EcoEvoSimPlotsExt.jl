@@ -14,7 +14,9 @@ function EcoEvoSim.plotEvo(
         ylabel::String = "Mutation event",
         title::Union{String, Nothing} = nothing,
         size::Tuple = (800, 600),
-        legend::Bool = true
+        legend::Bool = true,
+        colorbarlabel::String = "Population size",
+        rightmargin = 10Plots.mm
     ) where {T<:Real, AuxClasses}
 
     # Check for empty history
@@ -68,7 +70,8 @@ function EcoEvoSim.plotEvo(
         size = size,
         legend = legend ? :right : false,
         colorbar = legend,
-        colorbar_title = legend ? "Population size" : "",
+        colorbar_title = legend ? colorbarlabel : "",
+        right_margin = rightmargin,
         label = ""
     )
 
@@ -96,7 +99,8 @@ function EcoEvoSim.plotEvoTwoTrait(
         title::Union{String, Nothing} = nothing,
         size::Tuple = (800, 600),
         legend::Bool = true,
-        camera::Tuple = (45, 30)
+        camera::Tuple = (45, 30),
+        rightmargin = 10Plots.mm
     ) where {T<:Real, AuxClasses}
 
     if length(history.history) > 0
@@ -141,9 +145,10 @@ function EcoEvoSim.plotEvoTwoTrait(
         size = size,
         legend = legend ? :right : false,
         colorbar = legend,
-        colorbar_title = legend ? "\n\nPopulation size" : "",
+        colorbar_title = legend ? colorbarlabel : "",
         colorbar_title_location = :right,
         colorbar_titleoffsetx = 0,
+        right_margin = rightmargin,
         label = "",
         camera = camera
     )
