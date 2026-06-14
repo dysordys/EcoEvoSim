@@ -99,6 +99,7 @@ function EcoEvoSim.plotEvoTwoTrait(
         title::Union{String, Nothing} = nothing,
         size::Tuple = (800, 600),
         legend::Bool = true,
+        colorbarlabel::String = "Population size",
         camera::Tuple = (45, 30),
         rightmargin = 10Plots.mm
     ) where {T<:Real, AuxClasses}
