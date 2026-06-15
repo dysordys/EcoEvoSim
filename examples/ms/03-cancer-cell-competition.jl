@@ -22,15 +22,15 @@ config = EcoEvoConfig(
 
 
 # 1D trait space:
-lineage1D = Community([1.0], [0.3])
-lineage1D = ecoDyn(lineage1D, config)
-lineage1D = evolve(lineage1D, config, 1800);
+initCommunity1D = Community([1.0], [0.3])
+initCommunity1D = ecoDyn(initCommunity1D, config)
+lineage1D = evolve(initCommunity1D, config, 1800);
 p1D = plotEvo(lineage1D)
 
 
 # 2D trait space:
-lineage2D = Community([1.0], [0.3 -0.3])
-lineage2D = ecoDyn(lineage2D, config)
-lineage2D = evolve(lineage2D, config, 10000);
+initCommunity2D = Community([1.0], [0.3 -0.3])
+initCommunity2D = ecoDyn(initCommunity2D, config)
+lineage2D = evolve(initCommunity2D, config, 10000);
 p2D = plotEvoTwoTrait(lineage2D, camera = (70, 20))
 plotEvoTwoTraitInteractive(lineage2D)

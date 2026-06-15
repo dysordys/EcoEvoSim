@@ -3,7 +3,7 @@ using EcoEvoSim, OrdinaryDiffEq, Plots
 
 Q(x) = (tanh(x) + 1) / 2
 growthFn(z) = Q(sum(z .- 0.5) / 0.2) - Q(-0.5 / 0.2)
-kernelFn(zi, zj) = -Q(sum(zi .- zj) / 0.1)
+kernelFn(zi, zj) = -Q(sum(zi .- zj) / 0.15)
 
 
 config = EcoEvoConfig(
@@ -22,7 +22,7 @@ config = EcoEvoConfig(
 )
 
 
-lineage = Community([1.0], [0.2])
-lineage = ecoDyn(lineage, config)
-lineage = evolve(lineage, config, 2500);
+initCommunity = Community([1.0], [0.2])
+initCommunity = ecoDyn(initCommunity, config)
+lineage = evolve(initCommunity, config, 2500);
 p = plotEvo(lineage)
