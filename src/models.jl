@@ -202,7 +202,9 @@ function unstructuredModel(eqnFn; auxDynamics=nothing, precompute=nothing)
             n   = @view u[1:nSp]
             aux = @view u[nSp+1:nSp+nAux]
 
-            du = similar(u)
+            # Promote with typeof(t) so Rosenbrock time-gradient autodiff
+            # (Dual-valued t) can be stored for non-autonomous systems.
+            du = similar(u, promote_type(eltype(u), typeof(t)))
 
             # Species dynamics
             for i in 1:nSp
@@ -337,7 +339,9 @@ function structuredModel(eqnFn; auxDynamics=nothing, precompute=nothing)
             n   = reshape(@view(u[1:nSp*nPatch]), nPatch, nSp)'
             aux = @view u[nSp*nPatch+1:nSp*nPatch+nAux]
 
-            du = similar(u)
+            # Promote with typeof(t) so Rosenbrock time-gradient autodiff
+            # (Dual-valued t) can be stored for non-autonomous systems.
+            du = similar(u, promote_type(eltype(u), typeof(t)))
 
             # Species dynamics
             for i in 1:nSp
