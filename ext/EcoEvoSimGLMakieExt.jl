@@ -16,7 +16,7 @@ trait evolution over time with population densities indicated by color.
 - `history::EvoHistory`: The evolutionary history to visualize
 
 # Keyword Arguments
-- `colormap = [:lightgray, :navy]`: Color scheme for population sizes
+- `colormap = [:gray85, :steelblue, :navy, :black]`: Color scheme for population sizes
 - `markersize::Real = 8.0`: Size of markers
 - `xlabel::String = "Trait 1"`: Label for first trait axis
 - `ylabel::String = "Trait 2"`: Label for second trait axis
@@ -43,7 +43,7 @@ Throws an `ArgumentError` if the trait space is not 2-dimensional or history is 
 """
 function EcoEvoSim.plotEvoTwoTraitInteractive(
         history::EvoHistory{T, AuxClasses};
-        colormap = [:lightgray, :navy],
+        colormap = [:gray85, :steelblue, :navy, :black],
         markersize::Real = 8.0,
         xlabel::String = "Trait 1",
         ylabel::String = "Trait 2",

@@ -7,7 +7,7 @@ using Plots
 function EcoEvoSim.plotEvo(
         history::EvoHistory{T, AuxClasses};
         traitDim::Integer = 1,
-        colormap = cgrad([:lightgray, :navy]),
+        colormap = cgrad([:gray85, :steelblue, :navy, :black]),
         markersize::Real = 3.0,
         alpha::Real = 0.7,
         xlabel::String = "Trait value",
@@ -90,7 +90,7 @@ end
 
 function EcoEvoSim.plotEvoTwoTrait(
         history::EvoHistory{T, AuxClasses};
-        colormap = cgrad([:lightgray, :navy]),
+        colormap = cgrad([:gray85, :steelblue, :navy, :black]),
         markersize::Real = 3.0,
         alpha::Real = 0.7,
         xlabel::String = "Trait 1",
