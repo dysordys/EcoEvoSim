@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+    tags: ['*']
+  pull_request:
+  workflow_dispatch:
+
+# Cancel superseded runs on the same ref (e.g. successive pushes to a PR).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - 'min'   # minimum supported Julia, derived from [compat] in Project.toml
+          - 'lts'   # current long-term-support release
+          - '1'     # latest stable 1.x
+        os:
+          - ubuntu-latest
+        arch:
+          - x64
+        include:
+          # Spot-check the other platforms on the latest stable release.
+          - os: macos-latest
+            version: '1'
+            arch: aarch64
+          - os: windows-latest
+            version: '1'
+            arch: x64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - uses: julia-actions/cache@v2
+      - uses: julia-actions/julia-buildpkg@v1
+      - uses: julia-actions/julia-runtest@v1

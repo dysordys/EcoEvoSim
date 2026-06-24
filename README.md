@@ -1,5 +1,7 @@
 # EcoEvoSim
 
+[![CI](https://github.com/dysordys/EcoEvoSim/actions/workflows/CI.yml/badge.svg)](https://github.com/dysordys/EcoEvoSim/actions/workflows/CI.yml)
+
 **EcoEvoSim** is a Julia package for simulating the eco-evolutionary dynamics of
 clonally reproducing replicating entities. The package provides a high-level interface
 for studying how ecological interactions and evolutionary processes shape community
