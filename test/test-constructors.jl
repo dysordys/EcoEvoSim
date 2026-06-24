@@ -5,7 +5,7 @@ using EcoEvoSim
 numTests = 50
 
 
-@testset "tests_of_basic_constructors" begin
+@testset "tests_of_constructors" begin
 
     @testset "testing_PopulationSize_constructors" begin
         for _ in 1:numTests

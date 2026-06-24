@@ -6,7 +6,7 @@ using Random
 numTests = 50
 
 
-@testset "tests_of_basic_utilities" begin
+@testset "tests_of_utilities" begin
 
     @testset "testing_addSpecies_single_species" begin
         for _ in 1:numTests

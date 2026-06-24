@@ -9,10 +9,10 @@ using NonlinearSolve
 using OrderedCollections
 
 
-include("basic-types.jl")
-include("basic-constructors.jl")
-include("basic-selectors.jl")
-include("basic-utils.jl")
+include("types.jl")
+include("constructors.jl")
+include("selectors.jl")
+include("utils.jl")
 include("mutgen.jl")
 include("evoevo.jl")
 include("models.jl")

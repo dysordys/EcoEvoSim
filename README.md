@@ -172,7 +172,7 @@ end
 | Argument   | Description |
 |------------|-------------|
 | `i`        | Species index |
-| `j`        | Patch/stage index |
+| `k`        | Patch/stage index |
 | `n`        | Density matrix (`n[i,k]` = density of species `i` in patch `k`) |
 | `z`        | Vector of trait vectors (`z[i]` = traits of species `i`) |
 | `aux`      | Auxiliary variable vector (e.g., resource levels per patch) |
@@ -234,25 +234,35 @@ The `EcoEvoConfig` struct allows one to specify:
 
 See the `examples/` directory for more detailed demonstrations:
 
-- `evo-demo.jl`: Basic evolutionary simulation using Lotka-Volterra competition.
-- `evo-demo-steady.jl`: As `evo-demo.jl`, but explicitly integrating the ecological
-dynamics until steady state is reached, instead of integrating for a prescribed
-number of time units.
-- `evo-demo-2D.jl`: Lotka-Volterra competition in a two-dimensional trait space.
-- `evo-demo-helper-1.jl`: Same as `evo-demo.jl`, but defining the model with
-`unstructuredModel` instead of the pre-built `lotkaVolterra`.
-- `evo-demo-helper-2.jl`: Same as `evo-demo.jl`, but defining the model with
-`unstructuredModel` instead of the pre-built `lotkaVolterra`, and also relying on
-the `precompute` method to make the running of the model more efficient.
-- `two-patch.jl`: A model with two spatial patches that have different environmental
-conditions and limited migration in between. Depending on the parameters, either a
-single generalist prevails or two specialist species emerge.
-- `two-patch-helper.jl`: Same as `two-patch.jl`, but using the `structuredModel`
-helper method for a much simpler definition.
-- `two-patch-resource.jl`: Two-patch model with explicit resource dynamics -- gives
-identical results to the implicit-resource model.
-- `two-patch-resource-helper.jl`: Same as `two-patch-resource.jl`, but using
-the `structuredModel` helper method together with `auxDynamics`.
+- `01a-basic-cancer-growth.jl`: Directional evolution of a single trait toward an
+environmental optimum, in a logistic cancer-growth model. The trait evolves
+monotonically, with no evolutionary branching.
+- `01b-basic-cancer-growth-with-precompute.jl`: The same model as `01a`, but using
+the `precompute` helper to evaluate the constant intrinsic growth rate once per
+ecological phase instead of at every integration step.
+- `02a-two-patch.jl`: A spatially structured (two-patch) version in which
+heterogeneity between the patches drives evolutionary branching into two
+locally adapted lineages. Built with `structuredModel`; strong enough migration
+suppresses the branching.
+- `02b-two-patch-with-explicit-resource.jl`: The same as `02a`, but with the
+limiting resource tracked explicitly (one resource per patch, via `auxDynamics`).
+The parameters are chosen so it reproduces the implicit-resource model.
+- `03-cancer-cell-competition.jl`: A generalized Lotka-Volterra model with a
+Gaussian competition kernel, built with the `lotkaVolterra` helper. A single
+ancestor branches repeatedly into a community of coexisting clones. Shown in both
+1D and 2D trait spaces, and demonstrates the interactive plotting option.
+- `04-competition-proliferation.jl`: A competition-proliferation (competition-
+colonization) tradeoff model that yields a hierarchically structured community.
+Uses `generateMutantWeighted` for density-proportional parent selection and
+steady-state integration via `DynamicSS`.
+- `05a-beverton-holt-basic.jl`: A discrete-time analog of `03` using the
+multispecies Beverton-Holt map, selected via the `FunctionMap()` algorithm, with
+`precompute` for the growth rates and interaction matrix.
+- `05b-beverton-holt-steadystate.jl`: The same as `05a`, but iterating each
+ecological phase to a fixed point using the `DiscreteSS()` algorithm.
+- `06-env-variation.jl`: Evolutionary branching driven by a fluctuating, two-season
+environment (a storage-effect model). An unstructured model with explicit time
+dependence; a single ancestor branches into two season specialists.
 
 
 
@@ -260,22 +270,27 @@ the `structuredModel` helper method together with `auxDynamics`.
 
 For more details on the implementation and API, see the source files in `src/`:
 
-- `EcoEvoSim.jl`: The heart of the system where everything is brought together.
-- `basic-types.jl`: Core type definitions.
-- `basic-constructors.jl`: Constructor functions.
-- `basic-selectors.jl`: Selector functions (one should favor these over explicit
+- `EcoEvoSim.jl`: The heart of the system, where everything is brought together
+(module definition, includes, and exports).
+- `types.jl`: Core type definitions.
+- `constructors.jl`: Constructor functions.
+- `selectors.jl`: Selector functions (one should favor these over explicit
 field access).
-- `basic-utils.jl`: Simple utility functions that help work with the system's custom
-types.
-- `show-methods.jl`: Custom pretty-printing for the system's types.
-- `ecoevo.jl`: Main eco-evolutionary simulation logic.
+- `utils.jl`: Utility functions that help work with the system's custom types.
+- `mutgen.jl`: Mutant generation for eco-evolutionary simulations.
+- `evoevo.jl`: Eco-evolutionary configuration, ecological integration, and the
+evolution loop.
 - `models.jl`: Predefined ecological models, plus a syntax for conveniently defining
 any model.
-- `visualize.jl`: Plotting utilities.
+- `show-methods.jl`: Custom pretty-printing for the system's types.
 
-These source files also have corresponding test suites, under `/test`. for example,
-tests for `ecoevo.jl` are in `/test/test-ecoevo.jl`, and so on. The `runtests.jl`
-script runs all tests across these test files.
+Plotting is provided through package extensions in `ext/`, loaded automatically when
+the corresponding backend is available: `EcoEvoSimPlotsExt.jl` (static plots via
+Plots) and `EcoEvoSimGLMakieExt.jl` (interactive plots via GLMakie).
+
+Most source files have a corresponding test file under `/test/` — for example, the
+tests for `selectors.jl` live in `/test/test-selectors.jl`. The `runtests.jl` script
+runs all of them.
 
 
 

@@ -5,7 +5,7 @@ using EcoEvoSim
 numTests = 50
 
 
-@testset "tests_of_basic_selectors" begin
+@testset "tests_of_selectors" begin
 
     @testset "testing_species_selector_by_index" begin
         for _ in 1:numTests
