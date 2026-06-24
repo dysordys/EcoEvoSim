@@ -25,7 +25,7 @@ function Base.show(
         buf = IOBuffer()
         show(buf, sp)
         str = String(take!(buf))
-        indented = join("    " * line for line in split(str, '\n') if !isempty(line), "\n")
+        indented = join(("    " * line for line in split(str, '\n') if !isempty(line)), "\n")
         println(io, indented)
     end
     for (j, aux) in enumerate(comm.aux)

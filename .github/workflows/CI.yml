@@ -25,8 +25,12 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - 'min'   # minimum supported Julia, derived from [compat] in Project.toml
-          - 'lts'   # current long-term-support release
+          # 1.10 is the project's minimum (the LTS line). We pin to the 1.10 line's
+          # latest patch rather than using 'min', because Julia 1.10.0's Pkg has a
+          # status-printing bug (KeyError: SparseArrays) that breaks `Pkg.test` for
+          # dependency trees with stdlib extensions — unrelated to this package, and
+          # fixed in later 1.10 patches.
+          - '1.10'  # minimum supported Julia (LTS), latest patch
           - '1'     # latest stable 1.x
         os:
           - ubuntu-latest
