@@ -10,7 +10,7 @@
 # patch. A large enough `mu` makes a single generalist best, and will suppress
 # the branching.
 
-using EcoEvoSim, OrdinaryDiffEq, Plots
+using EcoEvoSim, Plots
 
 
 mu = 0.1 # Migration rate

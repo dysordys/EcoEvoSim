@@ -13,7 +13,7 @@
 # monotonically toward z = 0 as fitter phenotypes successively replace less fit ones,
 # with no evolutionary branching.
 
-using EcoEvoSim, OrdinaryDiffEq, Plots
+using EcoEvoSim, Plots
 
 
 ecology = unstructuredModel() do i, n, z, aux, S

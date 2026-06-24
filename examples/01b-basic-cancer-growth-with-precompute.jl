@@ -10,7 +10,7 @@
 # marginal, since 1 - sum(z[i]) is cheap to evaluate. But it does illustrate how
 # `precompute` could be used in more serious examples as well.
 
-using EcoEvoSim, OrdinaryDiffEq, Plots
+using EcoEvoSim, Plots
 
 
 ecology = unstructuredModel(

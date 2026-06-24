@@ -580,9 +580,9 @@ julia> config = EcoEvoConfig(
            extThreshold = 0.003
        );
 
-julia> history1 = evolve!(comm, config, 10);
+julia> history1 = evolve(comm, config, 10; showProgress=false);
 
-julia> history2 = evolve(history1, config, 5);
+julia> history2 = evolve(history1, config, 5; showProgress=false);
 
 julia> length(history1)  # Original unchanged
 11
@@ -636,7 +636,7 @@ julia> config = EcoEvoConfig(
            extThreshold = 0.003
        );
 
-julia> history = evolve(comm, config, 10);
+julia> history = evolve(comm, config, 10; showProgress=false);
 
 julia> length(history)
 11

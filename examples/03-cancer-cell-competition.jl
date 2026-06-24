@@ -14,7 +14,7 @@
 # (each clone then has two independent trait axes, e.g. two metabolic pathways).
 # The final two lines showcase the package's interactive plotting option.
 
-using EcoEvoSim, OrdinaryDiffEq, Plots
+using EcoEvoSim, Plots
 
 
 growthFn(z) = 1 - sum(z.^2) / 0.5^2

@@ -18,7 +18,7 @@
 # simulation, a single ancestor diversifies into a stable, hierarchically structured
 # set of clones.
 
-using EcoEvoSim, OrdinaryDiffEq, Plots
+using EcoEvoSim, Plots
 
 
 Q(x) = (tanh(x) + 1) / 2

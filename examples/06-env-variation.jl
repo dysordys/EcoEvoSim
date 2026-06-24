@@ -28,7 +28,7 @@
 # solver can numerically overshoot and produce n_i < 0. If this is a problem, pass
 # `isoutofdomain = (u, p, t) -> any(x -> x < 0, u)` to `IntegrationParams`.
 
-using EcoEvoSim, OrdinaryDiffEq, Plots
+using EcoEvoSim, Plots
 
 
 w = 0.7 # Width of temperature tolerance curve; branching requires w < 1 in this model

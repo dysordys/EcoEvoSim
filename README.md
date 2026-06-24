@@ -1,5 +1,7 @@
 # EcoEvoSim
 
+[![Docs (stable)](https://img.shields.io/badge/docs-stable-blue.svg)](https://dysordys.github.io/EcoEvoSim/stable)
+[![Docs (dev)](https://img.shields.io/badge/docs-dev-blue.svg)](https://dysordys.github.io/EcoEvoSim/dev)
 [![CI](https://github.com/dysordys/EcoEvoSim/actions/workflows/CI.yml/badge.svg)](https://github.com/dysordys/EcoEvoSim/actions/workflows/CI.yml)
 
 **EcoEvoSim** is a Julia package for simulating the eco-evolutionary dynamics of
@@ -229,6 +231,48 @@ The `EcoEvoConfig` struct allows one to specify:
 - Methods for generating mutant phenotypes.
 - Integration (hyper-)parameters.
 - The extinction threshold, below which a phenotype is considered extinct.
+
+### Solver algorithms
+
+How each ecological phase is integrated is controlled by the `algorithm` passed to
+`IntegrationParams` (part of the integration parameters in `EcoEvoConfig`). For
+convenience, EcoEvoSim re-exports a small, curated set of algorithms, so the most
+common models need only `using EcoEvoSim`:
+
+- **Continuous-time ODE solvers:** `Rodas5` (the default; a stiff solver),
+`RadauIIA5` (stiff), `Tsit5` (non-stiff), `Vern7` (high-order non-stiff), and
+`AutoVern7` (auto-switching between `Vern7` and a stiff solver). These come from
+[OrdinaryDiffEq](https://docs.sciml.ai/OrdinaryDiffEq/stable/).
+- **Steady-state solvers:** `DynamicSS` (integrate until a steady state is reached)
+and `SSRootfind` (Newton-type rootfinding). These come from
+[SteadyStateDiffEq](https://docs.sciml.ai/DiffEqDocs/stable/solvers/steady_state_solve/).
+- **Discrete-time solvers:** `FunctionMap` (iterate a map for a set number of steps)
+and `DiscreteSS` (iterate a map until a fixed point is reached; EcoEvoSim's own).
+
+Because `Rodas5` is the default, specifying it is optional:
+
+```julia
+IntegrationParams(maxTime = 1.0e8)                       # uses Rodas5()
+IntegrationParams(maxTime = 1.0e8, algorithm = Tsit5())  # an explicit choice
+```
+
+This re-exported set is only a convenience subset. EcoEvoSim depends on the full
+OrdinaryDiffEq solver suite, so any other solver can be used by loading it
+explicitly:
+
+```julia
+using EcoEvoSim, OrdinaryDiffEq
+
+config = EcoEvoConfig(
+    ecoDyn = lotkaVolterra(growthFn, kernelFn),
+    mutationGenerator = generateMutant(invaderPopsize = 0.001, variance = 0.002^2),
+    integrationParams = IntegrationParams(maxTime = 100.0, algorithm = KenCarp4()),
+    extThreshold = 0.003,
+)
+```
+
+See the [OrdinaryDiffEq documentation](https://docs.sciml.ai/OrdinaryDiffEq/stable/)
+for the full catalogue of available solvers.
 
 
 

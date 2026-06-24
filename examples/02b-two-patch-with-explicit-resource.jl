@@ -8,7 +8,7 @@
 # `beta*aux[k] - m0` reduces to `-sum(n[i,k])`, recovering the `localGrowth`
 # expression of 02a-two-patch.jl.
 
-using EcoEvoSim, OrdinaryDiffEq, Plots
+using EcoEvoSim, Plots
 
 mu = 0.1 # Example value for migration rate
 y = [-1/2, 1/2] # Example patch optima

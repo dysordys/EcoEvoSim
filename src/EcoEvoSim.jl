@@ -35,7 +35,10 @@ export PopulationSize, Phenotype, Species, Community, EvoHistory,
        niceTickInterval, historyToTable, timeSeriesToTable,
        historyList, filterHistory, lastCommunity,
        unstructuredModel, structuredModel,
-       DynamicSS, SSRootfind, FunctionMap, DiscreteSS
+       # Integration algorithms: EcoEvoSim's own plus a curated set re-exported
+       # from the SciML solver stack, so common models need only `using EcoEvoSim`.
+       DynamicSS, SSRootfind, FunctionMap, DiscreteSS,
+       Rodas5, RadauIIA5, Tsit5, Vern7, AutoVern7
 
 
 # Stubs for the Plots extension — implemented when Plots is loaded
