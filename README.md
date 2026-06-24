@@ -316,8 +316,8 @@ dependence; a single ancestor branches into two season specialists.
 
 For more details on the implementation and API, see the source files in `src/`:
 
-- `EcoEvoSim.jl`: The heart of the system, where everything is brought together
-(module definition, includes, and exports).
+- `EcoEvoSim.jl`: Where everything is brought together (module definition, includes,
+and exports).
 - `types.jl`: Core type definitions.
 - `constructors.jl`: Constructor functions.
 - `selectors.jl`: Selector functions (one should favor these over explicit
@@ -350,3 +350,11 @@ for more details.
 ## Author
 
 György Barabás (dysordys@protonmail.com)
+
+
+
+## Acknowledgments
+
+Development of this package was assisted by Anthropic's Claude models — much of the
+codebase was written with Claude Haiku, with later refactoring, documentation, and
+project setup carried out with Claude Opus 4.8.
