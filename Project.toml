@@ -26,7 +26,7 @@ EcoEvoSimPlotsExt = "Plots"
 
 [compat]
 Distributions = "0.25"
-GLMakie = "0.11"
+GLMakie = "0.11, 0.13"
 LinearAlgebra = "1.0"
 NonlinearSolve = "4.19.1"
 OrderedCollections = "1.0"
