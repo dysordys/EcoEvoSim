@@ -314,7 +314,11 @@ explicit time dependence; a single ancestor branches into two season specialists
 
 ## Documentation
 
-For more details on the implementation and API, see the source files in `src/`:
+The full rendered documentation, including the API reference, is hosted at
+[dysordys.github.io/EcoEvoSim](https://dysordys.github.io/EcoEvoSim/).
+
+For more details on the implementation, the source files in `src/` are organized as
+follows:
 
 - `EcoEvoSim.jl`: Where everything is brought together (module definition, includes,
 and exports).
@@ -337,6 +341,13 @@ Plots) and `EcoEvoSimGLMakieExt.jl` (interactive plots via GLMakie).
 Most source files have a corresponding test file under `/test/` — for example, the
 tests for `selectors.jl` live in `/test/test-selectors.jl`. The `runtests.jl` script
 runs all of them.
+
+
+
+## Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for
+development setup, the conventions the codebase follows, and how to submit changes.
 
 
 
