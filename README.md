@@ -306,9 +306,9 @@ multispecies Beverton-Holt map, selected via the `FunctionMap()` algorithm, with
 `precompute` for the growth rates and interaction matrix.
 - `05b-beverton-holt-steadystate.jl`: The same as `05a`, but iterating each
 ecological phase to a fixed point using the `DiscreteSS()` algorithm.
-- `06-env-variation.jl`: Evolutionary branching driven by a fluctuating, two-season
-environment (a storage-effect model). An unstructured model with explicit time
-dependence; a single ancestor branches into two season specialists.
+- `06-environmental-variation.jl`: Evolutionary branching driven by a fluctuating,
+two-season environment (a storage-effect model). An unstructured model with
+explicit time dependence; a single ancestor branches into two season specialists.
 
 
 
