@@ -56,7 +56,7 @@ Pages = ["mutgen.jl"]
 
 ```@autodocs
 Modules = [EcoEvoSim]
-Pages = ["evoevo.jl"]
+Pages = ["ecoevo.jl"]
 ```
 
 ## Model builders

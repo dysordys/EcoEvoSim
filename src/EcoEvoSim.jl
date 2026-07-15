@@ -14,7 +14,7 @@ include("constructors.jl")
 include("selectors.jl")
 include("utils.jl")
 include("mutgen.jl")
-include("evoevo.jl")
+include("ecoevo.jl")
 include("models.jl")
 include("show-methods.jl")
 

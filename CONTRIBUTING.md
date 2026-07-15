@@ -74,7 +74,7 @@ src/
   selectors.jl          # accessors and queries over the core types
   utils.jl              # community/history manipulation helpers
   mutgen.jl             # mutant generation (generateMutant* factories, noMutation)
-  evoevo.jl             # config types, ecological integration, the evolution loop
+  ecoevo.jl             # config types, ecological integration, the evolution loop
   models.jl             # model builders (unstructuredModel, structuredModel, lotkaVolterra)
   show-methods.jl       # pretty-printing
 ext/

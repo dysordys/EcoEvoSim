@@ -328,7 +328,7 @@ and exports).
 field access).
 - `utils.jl`: Utility functions that help work with the system's custom types.
 - `mutgen.jl`: Mutant generation for eco-evolutionary simulations.
-- `evoevo.jl`: Eco-evolutionary configuration, ecological integration, and the
+- `ecoevo.jl`: Eco-evolutionary configuration, ecological integration, and the
 evolution loop.
 - `models.jl`: Predefined ecological models, plus a syntax for conveniently defining
 any model.
