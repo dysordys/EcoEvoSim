@@ -22,8 +22,11 @@ Initial public release.
 - Model builders `unstructuredModel` and `structuredModel`, each with optional
   auxiliary-variable dynamics (`auxDynamics`) and a `precompute` hook, plus the
   pre-built `lotkaVolterra` model.
-- Mutant-generation factories: `generateMutant`, `generateMutantWeighted`,
-  `generateMutantSpatial`, `generateMutantSpatialWeighted`, and `noMutation`.
+- Mutant-generation factories `generateMutant`, `generateMutantSpatial`, and
+  `noMutation`. Parent selection is pluggable via the `parentSelection` argument,
+  which defaults to `weightedRandomSpecies` (density-proportional, so that every
+  individual is equally likely to give rise to the mutant); pass `randomSpecies`
+  for uniform selection over species, or any `Community -> Int` function of your own.
 - Continuous-time, steady-state, and discrete-time ecological dynamics, including
   the package's own `DiscreteSS` fixed-point iteration.
 - Convenience re-exports of common solver algorithms (`Rodas5`, `RadauIIA5`,

@@ -107,7 +107,7 @@ numTests = 50
     end
 
 
-    @testset "testing_generateMutantWeighted_with_covariance_matrix" begin
+    @testset "testing_generateMutant_weighted_default_with_covariance_matrix" begin
         # Create a community with varied population sizes
         for _ in 1:numTests
             nSpecies = rand(3:6)
@@ -141,7 +141,7 @@ numTests = 50
             parentCounts = zeros(Int, nSpecies)
 
             for trial in 1:nTrials
-                newComm = generateMutantWeighted(; invaderPopsize=0.001, covMat=covMat)(comm)
+                newComm = generateMutant(; invaderPopsize=0.001, covMat=covMat)(comm)
                 mutantTrait = traits(newComm, numSpecies(newComm))
 
                 # Find which parent was used (closest trait)
@@ -169,7 +169,7 @@ numTests = 50
     end
 
 
-    @testset "testing_generateMutantWeighted_with_scalar_variance" begin
+    @testset "testing_generateMutant_weighted_default_with_scalar_variance" begin
         # Create a simple test community
         for _ in 1:numTests
             nSpecies = rand(2:5)
@@ -192,7 +192,7 @@ numTests = 50
 
             # Generate mutant with scalar variance
             variance = 0.01
-            newComm = generateMutantWeighted(; invaderPopsize=0.001, variance=variance)(comm)
+            newComm = generateMutant(; invaderPopsize=0.001, variance=variance)(comm)
 
             # Check that community has one more species
             @test numSpecies(newComm) == numSpecies(comm) + 1
@@ -214,8 +214,71 @@ numTests = 50
         params = IntegrationParams(maxTime=100.0, abstol=1e-6, reltol=0.1)
         config = EcoEvoConfig(ecoDyn, mutGen, params, 1e-8)
 
-        @test_throws ArgumentError generateMutantWeighted(; invaderPopsize=0.001, variance=-0.01)
-        @test_throws ArgumentError generateMutantWeighted(; invaderPopsize=0.001, variance=0.0)
+        @test_throws ArgumentError generateMutant(; invaderPopsize=0.001, variance=-0.01)
+        @test_throws ArgumentError generateMutant(; invaderPopsize=0.001, variance=0.0)
+    end
+
+
+    @testset "testing_generateMutant_parentSelection_weighted_vs_uniform" begin
+        # Three well-separated traits with very unequal abundances, so the parent
+        # of each mutant can be identified from its trait value.
+        Random.seed!(1234)
+        species = [
+            Species(10.0, [0.0]),   # abundant
+            Species(1.0,  [1.0]),   # intermediate
+            Species(0.1,  [2.0])    # rare
+        ]
+        comm = Community(species, PopulationSize{Float64}[], 0.0)
+
+        nTrials = 1500
+        parentOf(newComm) = argmin([
+            sum((traits(newComm, numSpecies(newComm)) .- pt).^2) for pt in traits(comm)
+        ])
+
+        countParents(gen) = begin
+            counts = zeros(Int, numSpecies(comm))
+            for _ in 1:nTrials
+                counts[parentOf(gen(comm))] += 1
+            end
+            counts
+        end
+
+        # Default (weightedRandomSpecies): parent drawn in proportion to density
+        weightedCounts = countParents(generateMutant(; invaderPopsize=0.001, variance=0.01^2))
+        @test sum(weightedCounts) == nTrials
+        @test weightedCounts[1] > weightedCounts[2] > weightedCounts[3]
+
+        # Explicitly passing weightedRandomSpecies must match the default behaviour
+        explicitCounts = countParents(generateMutant(;
+            invaderPopsize=0.001, variance=0.01^2, parentSelection=weightedRandomSpecies
+        ))
+        @test explicitCounts[1] > explicitCounts[2] > explicitCounts[3]
+
+        # randomSpecies: every species equally likely, regardless of abundance
+        uniformCounts = countParents(generateMutant(;
+            invaderPopsize=0.001, variance=0.01^2, parentSelection=randomSpecies
+        ))
+        @test sum(uniformCounts) == nTrials
+        expected = nTrials / numSpecies(comm)
+        @test all(abs.(uniformCounts .- expected) .< 0.2 * expected)
+
+        # A custom selector is honoured: always pick the rarest species
+        alwaysRarest = _ -> 3
+        customCounts = countParents(generateMutant(;
+            invaderPopsize=0.001, variance=0.01^2, parentSelection=alwaysRarest
+        ))
+        @test customCounts[3] == nTrials
+    end
+
+
+    @testset "testing_generateMutant_invalid_parentSelection" begin
+        # A non-callable parentSelection is rejected at factory creation time
+        @test_throws ArgumentError generateMutant(;
+            invaderPopsize=0.001, variance=0.01, parentSelection=42
+        )
+        @test_throws ArgumentError generateMutantSpatial(;
+            invaderPopsize=0.001, variance=0.01, parentSelection="weighted"
+        )
     end
 
 
@@ -409,7 +472,7 @@ numTests = 50
     end
 
 
-    @testset "testing_generateMutantSpatialWeighted_with_covariance_matrix" begin
+    @testset "testing_generateMutantSpatial_weighted_default_with_covariance_matrix" begin
         # Test weighted parent selection with spatial placement
         for _ in 1:numTests
             nSpecies = rand(2:4)
@@ -438,7 +501,7 @@ numTests = 50
             covMat = Matrix{Float64}(variance * I(traitDim))
 
             # Generate mutant with weighted selection
-            newComm = generateMutantSpatialWeighted(; invaderPopsize=0.001, covMat=covMat)(comm)
+            newComm = generateMutantSpatial(; invaderPopsize=0.001, covMat=covMat)(comm)
 
             # Check that community has one more species
             @test numSpecies(newComm) == numSpecies(comm) + 1
@@ -458,7 +521,7 @@ numTests = 50
     end
 
 
-    @testset "testing_generateMutantSpatialWeighted_with_scalar_variance" begin
+    @testset "testing_generateMutantSpatial_weighted_default_with_scalar_variance" begin
         # Test with variance parameter instead of covariance matrix
         for _ in 1:numTests
             nSpecies = rand(2:4)
@@ -476,7 +539,7 @@ numTests = 50
 
             # Generate mutant with scalar variance
             variance = 0.01
-            newComm = generateMutantSpatialWeighted(; invaderPopsize=0.001, variance=variance)(comm)
+            newComm = generateMutantSpatial(; invaderPopsize=0.001, variance=variance)(comm)
 
             # Check that community has one more species
             @test numSpecies(newComm) == numSpecies(comm) + 1
@@ -498,15 +561,15 @@ numTests = 50
         species = [Species([1.0, 2.0], [0.5, 0.5])]
         comm = Community(species, PopulationSize{Float64}[], 0.0)
 
-        @test_throws ArgumentError generateMutantSpatialWeighted(; invaderPopsize=0.001, variance=-0.01)
-        @test_throws ArgumentError generateMutantSpatialWeighted(; invaderPopsize=0.001, variance=0.0)
+        @test_throws ArgumentError generateMutantSpatial(; invaderPopsize=0.001, variance=-0.01)
+        @test_throws ArgumentError generateMutantSpatial(; invaderPopsize=0.001, variance=0.0)
     end
 
 
-    @testset "testing_generateMutantSpatialWeighted_parent_weighted_selection" begin
-        # Test that parent selection is weighted by abundance
-        # Create 3 species with very different abundances
-        nPatches = 2
+    @testset "testing_generateMutantSpatial_parent_selection" begin
+        # Test that parent selection is weighted by abundance by default, and
+        # uniform over species when randomSpecies is passed explicitly
+        Random.seed!(2345)
         species = [
             Species([5.0, 5.0], [0.0]),      # Most abundant
             Species([1.0, 1.0], [0.1]),      # Medium
@@ -516,36 +579,51 @@ numTests = 50
 
         # Generate many mutants and track which parent is selected
         nTrials = 1000
-        parent_counts = zeros(Int, 3)
 
-        for _ in 1:nTrials
-            newComm = generateMutantSpatialWeighted(; invaderPopsize=0.001, variance=0.01^2)(comm)
-            mutantTrait = traits(newComm, numSpecies(newComm))
+        function countSpatialParents(gen)
+            counts = zeros(Int, 3)
+            for _ in 1:nTrials
+                newComm = gen(comm)
+                mutantTrait = traits(newComm, numSpecies(newComm))
 
-            # Find which parent it's closest to
-            parentTraits = traits(comm)
-            minDist = Inf
-            parentIdx = 1
-            for (i, pt) in enumerate(parentTraits)
-                dist = sum((mutantTrait .- pt).^2)
-                if dist < minDist
-                    minDist = dist
-                    parentIdx = i
+                # Find which parent it's closest to
+                parentTraits = traits(comm)
+                minDist = Inf
+                parentIdx = 1
+                for (i, pt) in enumerate(parentTraits)
+                    dist = sum((mutantTrait .- pt).^2)
+                    if dist < minDist
+                        minDist = dist
+                        parentIdx = i
+                    end
                 end
+                counts[parentIdx] += 1
             end
-            parent_counts[parentIdx] += 1
+            counts
         end
+
+        # Default: abundance-weighted, matching how the patch itself is chosen
+        parent_counts = countSpatialParents(
+            generateMutantSpatial(; invaderPopsize=0.001, variance=0.01^2)
+        )
 
         # Check that all parents were selected at least once
         @test all(parent_counts .> 0)
 
         # Check that the most abundant species was selected most often
-        # (species 1 has 10x the population of species 2)
+        # (species 1 has 5x the population of species 2)
         @test parent_counts[1] > parent_counts[2]
+
+        # Explicit uniform selection: every species equally likely
+        uniform_counts = countSpatialParents(generateMutantSpatial(;
+            invaderPopsize=0.001, variance=0.01^2, parentSelection=randomSpecies
+        ))
+        expected = nTrials / 3
+        @test all(abs.(uniform_counts .- expected) .< 0.2 * expected)
     end
 
 
-    @testset "testing_generateMutantSpatialWeighted_patch_selection" begin
+    @testset "testing_generateMutantSpatial_patch_selection_with_multiple_species" begin
         # Test that patch selection is still weighted by patch population
         # Create a spatially heterogeneous community
         nPatches = 3
@@ -562,7 +640,7 @@ numTests = 50
         patch_counts = zeros(Int, nPatches)
 
         for _ in 1:nTrials
-            newComm = generateMutantSpatialWeighted(; invaderPopsize=0.001, variance=0.01^2)(comm)
+            newComm = generateMutantSpatial(; invaderPopsize=0.001, variance=0.01^2)(comm)
             mutantPops = popsizes(newComm, numSpecies(newComm))
             patch_idx = findall(x -> x > 0.0, mutantPops)[1]
             patch_counts[patch_idx] += 1
@@ -576,18 +654,4 @@ numTests = 50
         @test patch_counts[2] > patch_counts[3]
     end
 
-
-    @testset "testing_generateMutantSpatialWeighted_invalid_covariance_matrix_dimensions" begin
-        # Create a spatially-structured community with 2D traits
-        species = [Species([1.0, 1.0], [0.5, 0.5]), Species([2.0, 2.0], [0.3, 0.7])]
-        comm = Community(species, PopulationSize{Float64}[], 0.0)
-
-        # Try with wrong-sized covariance matrix (3x3 instead of 2x2)
-        wrongCovMat = Matrix{Float64}(0.01 * I(3))
-        @test_throws ArgumentError generateMutantSpatialWeighted(; invaderPopsize=0.001, covMat=wrongCovMat)(comm)
-
-        # Try with non-square matrix
-        wrongCovMat2 = rand(2, 3)
-        @test_throws ArgumentError generateMutantSpatialWeighted(; invaderPopsize=0.001, covMat=wrongCovMat2)(comm)
-    end
 end

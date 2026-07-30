@@ -10,9 +10,10 @@
 # `kernelFn` encodes a competitive hierarchy: a slower-growing (lower z) clone
 # outcompetes a faster-growing one.
 #
-# In the configuration block, `generateMutantWeighted` picks the parent clone with
-# probability proportional to its density, mimicking the per capita nature of
-# mutation. `DynamicSS(RadauIIA5())` integrates each ecological phase to steady
+# In the configuration block, `generateMutant` picks the parent clone with
+# probability proportional to its density (its default behaviour), mimicking the
+# per capita nature of mutation. `DynamicSS(RadauIIA5())` integrates each
+# ecological phase to steady
 # state rather than for a set number of time units. The `abstol` and `reltol`
 # parameters then control how tightly the steady state must be approached. In the
 # simulation, a single ancestor diversifies into a stable, hierarchically structured
@@ -27,7 +28,7 @@ kernelFn(zi, zj) = -Q(sum(zi .- zj) / 0.15)
 
 config = EcoEvoConfig(
     ecoDyn = lotkaVolterra(growthFn, kernelFn),
-    mutationGenerator = generateMutantWeighted(
+    mutationGenerator = generateMutant(
         invaderPopsize = 0.001,
         variance = 0.002^2
     ),

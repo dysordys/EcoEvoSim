@@ -15,8 +15,9 @@ the traits that can evolve, and the package automates the eco-evolutionary loop:
 
 1. Start with a community of phenotypes.
 2. Integrate the ecological equations for a specified time (or until equilibrium).
-3. Introduce a new mutant at low density, with a trait slightly perturbed from a
-   randomly chosen resident.
+3. Introduce a new mutant at low density, with a trait slightly perturbed from that
+   of a randomly chosen resident (by default, each resident is picked with
+   probability proportional to its density).
 4. Repeat from step 2 for a specified number of mutation events.
 
 ## Installation

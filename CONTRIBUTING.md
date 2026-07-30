@@ -113,10 +113,12 @@ These are descriptive of the existing code; match the surrounding style.
   docs build is in place. If you add or change an example, update the
   corresponding check.
 - **The factory pattern.** User-facing mutation generators (`generateMutant`,
-  `generateMutantWeighted`, etc.) are *factories*: keyword
+  `generateMutantSpatial`) are *factories*: keyword
   constructors that return a `Community -> Community` closure for the
   `mutationGenerator` field of `EcoEvoConfig`. Follow this pattern for new
-  generators, and route shared logic through `_makeMutantFactory`.
+  generators, and route shared logic through `_makeMutantFactory`. Variants that
+  differ only in how the parent is chosen belong in the `parentSelection` argument
+  (any `Community -> Int` function) rather than in a new exported name.
 - **Validation.** Constructors and factories validate their arguments eagerly and
   throw `ArgumentError` with a clear message (see `IntegrationParams`,
   `EcoEvoConfig`, `_makeMutantFactory`).

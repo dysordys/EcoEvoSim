@@ -16,7 +16,9 @@ the following steps:
 1. The ecological equations are integrated for some specified number of time units
 (or until equilibrium is reached).
 2. A new mutant is thrown into the community at a low density, and with a trait value
-that is a slight change from a randomly-picked resident's trait.
+that is a slight change from a randomly-picked resident's trait. By default, the
+resident is picked with probability proportional to its density, so that every
+individual is equally likely to give rise to the mutant.
 3. And then we repeat from Step 1, for a specified number of mutation events.
 
 
@@ -77,9 +79,10 @@ config = EcoEvoConfig(
     # Use built-in function `lotkaVolterra` to create Lotka-Volterra dynamics
     # with specific growth and interaction functions:
     ecoDyn = lotkaVolterra(growthFn, kernelFn),
-    # This is how new mutants should be generated - a resident is chosen at random,
-    # we add a normally-distributed variate to its trait with mean zero and standard
-    # deviation 0.002, and we initialize the new phenotype with population size 0.001:
+    # This is how new mutants should be generated - a resident is chosen at random
+    # (weighted by its density), we add a normally-distributed variate to its trait
+    # with mean zero and standard deviation 0.002, and we initialize the new
+    # phenotype with population size 0.001:
     mutationGenerator = generateMutant(invaderPopsize = 0.001, variance = 0.002^2),
     # Integrate each ecological step for 1e12 time units:
     integrationParams = IntegrationParams(maxTime = 1.0e12),
@@ -299,8 +302,7 @@ ancestor branches repeatedly into a community of coexisting clones. Shown in bot
 1D and 2D trait spaces, and demonstrates the interactive plotting option.
 - `04-competition-proliferation.jl`: A competition-proliferation (competition-
 colonization) tradeoff model that yields a hierarchically structured community.
-Uses `generateMutantWeighted` for density-proportional parent selection and
-steady-state integration via `DynamicSS`.
+Uses steady-state integration via `DynamicSS`.
 - `05a-beverton-holt-basic.jl`: A discrete-time analog of `03` using the
 multispecies Beverton-Holt map, selected via the `FunctionMap()` algorithm, with
 `precompute` for the growth rates and interaction matrix.

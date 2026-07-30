@@ -256,10 +256,14 @@ using Distributions
         covMat = [0.01;;]  # 1x1 matrix
         @test_nowarn generateMutant(; invaderPopsize=0.001, covMat=covMat)
 
-        # generateMutantWeighted examples
+        # generateMutant with explicit parent selection (from docstring)
         Random.seed!(42)
-        @test_nowarn generateMutantWeighted(; invaderPopsize=0.001, variance=0.01)
-        @test_nowarn generateMutantWeighted(; invaderPopsize=0.001, covMat=covMat)
+        mutgen_comm = Community([1.0, 10.0], [0.0, 0.3])
+        gen_weighted = generateMutant(invaderPopsize=0.001, variance=0.01^2)
+        @test numSpecies(gen_weighted(mutgen_comm)) == 3
+        gen_uniform = generateMutant(invaderPopsize=0.001, variance=0.01^2,
+                                     parentSelection=randomSpecies)
+        @test numSpecies(gen_uniform(mutgen_comm)) == 3
 
         # singleEvoStep examples
         Random.seed!(42)
@@ -278,19 +282,17 @@ using Distributions
         history2 = EcoEvoSim.evolve!(comm_new, config, 5, showProgress=false)
         @test length(history2.history) == 6
 
-        # generateMutantSpatial examples (1 species, 2 patches)
+        # generateMutantSpatial examples (2 species, 2 patches each)
         Random.seed!(42)
-        spatial_comm = Community([1.0 1.0], [0.0])
+        spatial_comm = Community([1.0 1.0; 10.0 10.0], [0.0, 0.3])
         gen_spatial = generateMutantSpatial(invaderPopsize=0.001, variance=0.01^2)
         mutant_spatial = gen_spatial(spatial_comm)
-        @test numSpecies(mutant_spatial) == 2
+        @test numSpecies(mutant_spatial) == 3
 
-        # generateMutantSpatialWeighted examples (2 species, 2 patches each)
-        Random.seed!(42)
-        spatial_comm2 = Community([1.0 1.0; 10.0 10.0], [0.0, 0.3])
-        gen_spatial_w = generateMutantSpatialWeighted(invaderPopsize=0.001, variance=0.01^2)
-        mutant_spatial2 = gen_spatial_w(spatial_comm2)
-        @test numSpecies(mutant_spatial2) == 3
+        gen_spatial_uniform = generateMutantSpatial(invaderPopsize=0.001, variance=0.01^2,
+                                                    parentSelection=randomSpecies)
+        mutant_spatial_uniform = gen_spatial_uniform(spatial_comm)
+        @test numSpecies(mutant_spatial_uniform) == 3
     end
 
     @testset "Models" begin

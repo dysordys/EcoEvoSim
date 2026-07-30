@@ -23,7 +23,7 @@ end
 
 config = EcoEvoConfig(
     ecoDyn = ecology,
-    mutationGenerator = generateMutant(
+    mutationGenerator = generateMutantSpatial(
         invaderPopsize = 0.001,
         variance = 0.002^2
     ),

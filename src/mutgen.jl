@@ -48,11 +48,12 @@ end
 
 # User-facing factory functions (return Community -> Community closures)
 
-# Shared helper — reduces the four factory bodies to one place
-function _makeMutantFactory(workerFn, selectionFn;
+# Shared helper — reduces the factory bodies to one place
+function _makeMutantFactory(workerFn;
     invaderPopsize::Real,
     covMat::Union{AbstractMatrix{<:Real}, Nothing} = nothing,
-    variance::Union{Real, Nothing} = nothing
+    variance::Union{Real, Nothing} = nothing,
+    parentSelection = weightedRandomSpecies
 )
     if covMat !== nothing && variance !== nothing
         throw(ArgumentError("Specify either covMat or variance, not both"))
@@ -62,39 +63,55 @@ function _makeMutantFactory(workerFn, selectionFn;
     if variance !== nothing
         variance > 0 || throw(ArgumentError("variance must be positive"))
     end
+    isempty(methods(parentSelection)) && throw(ArgumentError(
+        "parentSelection must be a function mapping a Community to a species index " *
+        "(e.g. weightedRandomSpecies or randomSpecies); got a $(typeof(parentSelection))"
+    ))
     return function(community::Community{T, AuxClasses}) where {T<:Real, AuxClasses}
         cov = covMat !== nothing ?
             Matrix{T}(covMat) :
             Matrix{T}(T(variance) * I(traitSpaceDim(community)))
-        workerFn(community, T(invaderPopsize), cov, selectionFn)
+        workerFn(community, T(invaderPopsize), cov, parentSelection)
     end
 end
 
 
 """
-    generateMutant(; invaderPopsize, covMat=nothing, variance=nothing)
+    generateMutant(; invaderPopsize, covMat=nothing, variance=nothing,
+                   parentSelection=weightedRandomSpecies)
 
-Factory: return a mutation generator with uniform random parent selection.
-Returns a function `Community -> Community` suitable for the `mutationGenerator`
-field of `EcoEvoConfig`.
-
-Specify either `covMat` (full covariance matrix) or `variance` (diagonal covariance).
-Argument validation (excluding covariance matrix dimension) occurs at factory creation time.
-"""
-generateMutant(; kw...) = _makeMutantFactory(generateMutant, randomSpecies; kw...)
-
-
-"""
-    generateMutantWeighted(; invaderPopsize, covMat=nothing, variance=nothing)
-
-Factory: return a mutation generator with population-weighted parent selection.
-Returns a function `Community -> Community` suitable for the `mutationGenerator`
-field of `EcoEvoConfig`.
+Factory: return a mutation generator. Returns a function `Community -> Community`
+suitable for the `mutationGenerator` field of `EcoEvoConfig`.
 
 Specify either `covMat` (full covariance matrix) or `variance` (diagonal covariance).
 Argument validation (excluding covariance matrix dimension) occurs at factory creation time.
+
+# Arguments
+- `invaderPopsize`: Population size the mutant is introduced at
+- `covMat`: Full covariance matrix of the mutational step distribution
+- `variance`: Scalar variance, giving a diagonal covariance matrix (alternative to `covMat`)
+- `parentSelection`: Any function mapping a `Community` to the index of the parent
+  species. The default, [`weightedRandomSpecies`](@ref), draws the parent with
+  probability proportional to its population size, so that every *individual* is
+  equally likely to give rise to the mutant. Pass [`randomSpecies`](@ref) to give
+  every *species* an equal chance instead, regardless of abundance, or supply a
+  selector of your own.
+
+# Example
+```julia
+comm = Community([1.0, 10.0], [0.0, 0.3])
+
+# Parent drawn in proportion to density (the default):
+gen = generateMutant(invaderPopsize=0.001, variance=0.01^2)
+mutantComm = gen(comm)
+
+# Parent drawn uniformly over species instead:
+genUniform = generateMutant(invaderPopsize=0.001, variance=0.01^2,
+                            parentSelection=randomSpecies)
+mutantCommUniform = genUniform(comm)
+```
 """
-generateMutantWeighted(; kw...) = _makeMutantFactory(generateMutant, weightedRandomSpecies; kw...)
+generateMutant(; kw...) = _makeMutantFactory(generateMutant; kw...)
 
 
 # Spatial mutant generation - for populations with explicit spatial structure
@@ -177,54 +194,45 @@ end
 
 
 """
-    generateMutantSpatial(; invaderPopsize, covMat=nothing, variance=nothing)
+    generateMutantSpatial(; invaderPopsize, covMat=nothing, variance=nothing,
+                          parentSelection=weightedRandomSpecies)
 
-Factory: return a mutation generator for spatially-structured populations with uniform
-random parent selection. Returns a function `Community -> Community` suitable for the
-`mutationGenerator` field of `EcoEvoConfig`.
+Factory: return a mutation generator for spatially-structured populations. Returns a
+function `Community -> Community` suitable for the `mutationGenerator` field of
+`EcoEvoConfig`.
 
 The mutant appears in a single patch, chosen probabilistically based on patch population sizes.
 Specify either `covMat` (full covariance matrix) or `variance` (diagonal covariance).
 Argument validation (excluding covariance matrix dimension) occurs at factory creation time.
 
+# Arguments
+- `invaderPopsize`: Total population size the mutant is introduced at, all of it
+  placed in the selected patch
+- `covMat`: Full covariance matrix of the mutational step distribution
+- `variance`: Scalar variance, giving a diagonal covariance matrix (alternative to `covMat`)
+- `parentSelection`: Any function mapping a `Community` to the index of the parent
+  species. The default, [`weightedRandomSpecies`](@ref), draws the parent with
+  probability proportional to its total population size across patches, so that every
+  *individual* is equally likely to give rise to the mutant — matching the way the
+  patch itself is chosen. Pass [`randomSpecies`](@ref) to give every *species* an
+  equal chance instead, or supply a selector of your own.
+
 # Example
 ```julia
-# Create a spatially-structured community (1 species with density in 2 patches)
-comm = Community([1.0 1.0], [0.0])
+# Create a spatially-structured community (2 species with densities in 2 patches)
+comm = Community([1.0 1.0; 10.0 10.0], [0.0, 0.3])
 
 # Create generator and apply it
 gen = generateMutantSpatial(invaderPopsize=0.001, variance=0.01^2)
 mutant_comm = gen(comm)
+
+# Give every species an equal chance of being the parent instead
+genUniform = generateMutantSpatial(invaderPopsize=0.001, variance=0.01^2,
+                                   parentSelection=randomSpecies)
+mutant_comm_uniform = genUniform(comm)
 ```
 """
-generateMutantSpatial(; kw...) = _makeMutantFactory(generateMutantSpatial, randomSpecies; kw...)
-
-
-"""
-    generateMutantSpatialWeighted(; invaderPopsize, covMat=nothing, variance=nothing)
-
-Factory: return a mutation generator for spatially-structured populations with
-population-weighted parent selection. Returns a function `Community -> Community`
-suitable for the `mutationGenerator` field of `EcoEvoConfig`.
-
-Combines two features:
-- Parent species is selected with probability proportional to its total population size
-- The mutant appears in a single patch, chosen probabilistically based on patch population sizes
-
-Specify either `covMat` (full covariance matrix) or `variance` (diagonal covariance).
-Argument validation (excluding covariance matrix dimension) occurs at factory creation time.
-
-# Example
-```julia
-# Create a spatially-structured community with unequal species abundances (2 species, 2 patches)
-comm = Community([1.0 1.0; 10.0 10.0], [0.0, 0.3])
-
-# Create generator and apply it
-gen = generateMutantSpatialWeighted(invaderPopsize=0.001, variance=0.01^2)
-mutant_comm = gen(comm)
-```
-"""
-generateMutantSpatialWeighted(; kw...) = _makeMutantFactory(generateMutantSpatial, weightedRandomSpecies; kw...)
+generateMutantSpatial(; kw...) = _makeMutantFactory(generateMutantSpatial; kw...)
 
 
 """

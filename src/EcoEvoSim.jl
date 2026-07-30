@@ -27,25 +27,24 @@ export PopulationSize, Phenotype, Species, Community, EvoHistory,
        removeSpecies, addAux, removeAux, changePopsizes,
        changeTraits, orderByTrait, selectTraitDim,
        emptyCommunity, emptyEvoHistory, IntegrationParams, EcoEvoConfig,
-       generateMutant, generateMutantWeighted, generateMutantSpatial,
-       generateMutantSpatialWeighted, noMutation,
+       generateMutant, generateMutantSpatial, noMutation,
        ecoDyn, ecoDynTimeSeries, singleEvoStep,
        evolve, unpackCommunity, packCommunity, lotkaVolterra,
        plotEvo, plotEvoTwoTrait, plotEvoTwoTraitInteractive,
        niceTickInterval, historyToTable, timeSeriesToTable,
        historyList, filterHistory, lastCommunity,
        unstructuredModel, structuredModel,
-       # Integration algorithms: EcoEvoSim's own plus a curated set re-exported
-       # from the SciML solver stack, so common models need only `using EcoEvoSim`.
+       # Integration algorithms - EcoEvoSim's own plus a curated set re-exported
+       # from the SciML solver stack, so common models need only `using EcoEvoSim`:
        DynamicSS, SSRootfind, FunctionMap, DiscreteSS,
        Rodas5, RadauIIA5, Tsit5, Vern7, AutoVern7
 
 
-# Stubs for the Plots extension — implemented when Plots is loaded
+# Stubs for the Plots extension — implemented when Plots is loaded:
 function plotEvo end
 function plotEvoTwoTrait end
 
-# Stub for the GLMakie extension — implemented when GLMakie is loaded
+# Stub for the GLMakie extension — implemented when GLMakie is loaded:
 function plotEvoTwoTraitInteractive end
 
 
