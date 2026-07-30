@@ -271,6 +271,61 @@ numTests = 50
     end
 
 
+    @testset "testing_generateMutant_sd_equivalent_to_variance" begin
+        # sd = s must be exactly equivalent to variance = s^2: with the same RNG
+        # state the two must draw an identical mutant trait.
+        for _ in 1:numTests
+            traitDim = rand(1:3)
+            species = [Species(1.0, rand(traitDim)), Species(2.0, rand(traitDim))]
+            comm = Community(species, PopulationSize{Float64}[], 0.0)
+
+            s = 0.05 + rand() * 0.2
+            seed = rand(1:10^6)
+
+            Random.seed!(seed)
+            commSd = generateMutant(; invaderPopsize=0.001, sd=s)(comm)
+            Random.seed!(seed)
+            commVar = generateMutant(; invaderPopsize=0.001, variance=s^2)(comm)
+
+            @test traits(commSd, numSpecies(commSd)) ≈ traits(commVar, numSpecies(commVar))
+
+            # Same for the spatial generator
+            speciesSp = [Species([1.0, 2.0], rand(traitDim)), Species([3.0, 1.0], rand(traitDim))]
+            commSp = Community(speciesSp, PopulationSize{Float64}[], 0.0)
+
+            Random.seed!(seed)
+            spSd = generateMutantSpatial(; invaderPopsize=0.001, sd=s)(commSp)
+            Random.seed!(seed)
+            spVar = generateMutantSpatial(; invaderPopsize=0.001, variance=s^2)(commSp)
+
+            @test traits(spSd, numSpecies(spSd)) ≈ traits(spVar, numSpecies(spVar))
+            @test popsizes(spSd, numSpecies(spSd)) ≈ popsizes(spVar, numSpecies(spVar))
+        end
+    end
+
+
+    @testset "testing_generateMutant_covMat_variance_sd_are_exclusive" begin
+        covMat = Matrix{Float64}(0.01 * I(1))
+
+        # Exactly one of the three must be given
+        @test_throws ArgumentError generateMutant(; invaderPopsize=0.001)
+        @test_throws ArgumentError generateMutant(; invaderPopsize=0.001, variance=0.01, sd=0.1)
+        @test_throws ArgumentError generateMutant(; invaderPopsize=0.001, covMat=covMat, sd=0.1)
+        @test_throws ArgumentError generateMutant(; invaderPopsize=0.001, covMat=covMat, variance=0.01)
+        @test_throws ArgumentError generateMutant(;
+            invaderPopsize=0.001, covMat=covMat, variance=0.01, sd=0.1
+        )
+
+        @test_throws ArgumentError generateMutantSpatial(; invaderPopsize=0.001)
+        @test_throws ArgumentError generateMutantSpatial(; invaderPopsize=0.001, variance=0.01, sd=0.1)
+
+        # Non-positive sd is rejected at factory creation time
+        @test_throws ArgumentError generateMutant(; invaderPopsize=0.001, sd=0.0)
+        @test_throws ArgumentError generateMutant(; invaderPopsize=0.001, sd=-0.1)
+        @test_throws ArgumentError generateMutantSpatial(; invaderPopsize=0.001, sd=-0.1)
+    end
+
+
     @testset "testing_generateMutant_invalid_parentSelection" begin
         # A non-callable parentSelection is rejected at factory creation time
         @test_throws ArgumentError generateMutant(;

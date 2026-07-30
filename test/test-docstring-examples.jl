@@ -259,8 +259,9 @@ using Distributions
         # generateMutant with explicit parent selection (from docstring)
         Random.seed!(42)
         mutgen_comm = Community([1.0, 10.0], [0.0, 0.3])
-        gen_weighted = generateMutant(invaderPopsize=0.001, variance=0.01^2)
+        gen_weighted = generateMutant(invaderPopsize=0.001, sd=0.01)
         @test numSpecies(gen_weighted(mutgen_comm)) == 3
+        @test_nowarn generateMutant(invaderPopsize=0.001, variance=0.01^2)
         gen_uniform = generateMutant(invaderPopsize=0.001, variance=0.01^2,
                                      parentSelection=randomSpecies)
         @test numSpecies(gen_uniform(mutgen_comm)) == 3

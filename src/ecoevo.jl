@@ -101,7 +101,7 @@ Configuration for eco-evolutionary simulations.
 ```julia
 config = EcoEvoConfig(
     ecoDyn = lotkaVolterra(growthFn, interactionFn),
-    mutationGenerator = generateMutant(invaderPopsize=0.001, variance=0.01),
+    mutationGenerator = generateMutant(invaderPopsize=0.001, sd=0.1),
     integrationParams = IntegrationParams(maxTime = 50.0),
     extThreshold = 0.003
 )
@@ -575,7 +575,7 @@ julia> kernelFn = (zi, zj) -> -(tanh(sum(zi .- zj) / 0.3) + 1) / 2;
 
 julia> config = EcoEvoConfig(
            ecoDyn = lotkaVolterra(growthFn, kernelFn),
-           mutationGenerator = generateMutant(invaderPopsize=0.001, variance=0.002^2),
+           mutationGenerator = generateMutant(invaderPopsize=0.001, sd=0.002),
            integrationParams = IntegrationParams(maxTime = 1.0e8),
            extThreshold = 0.003
        );
@@ -631,7 +631,7 @@ julia> kernelFn = (zi, zj) -> -(tanh(sum(zi .- zj) / 0.3) + 1) / 2;
 
 julia> config = EcoEvoConfig(
            ecoDyn = lotkaVolterra(growthFn, kernelFn),
-           mutationGenerator = generateMutant(invaderPopsize=0.001, variance=0.002^2),
+           mutationGenerator = generateMutant(invaderPopsize=0.001, sd=0.002),
            integrationParams = IntegrationParams(maxTime = 1.0e8),
            extThreshold = 0.003
        );

@@ -23,7 +23,7 @@ end
 
 config = EcoEvoConfig(
     ecoDyn = multispeciesBevertonHolt,
-    mutationGenerator = generateMutant(invaderPopsize = 0.001, variance = 0.002^2),
+    mutationGenerator = generateMutant(invaderPopsize = 0.001, sd = 0.002),
     integrationParams = IntegrationParams(
         maxTime = Inf,
         algorithm = DiscreteSS(),

@@ -28,10 +28,7 @@ kernelFn(zi, zj) = -Q(sum(zi .- zj) / 0.15)
 
 config = EcoEvoConfig(
     ecoDyn = lotkaVolterra(growthFn, kernelFn),
-    mutationGenerator = generateMutant(
-        invaderPopsize = 0.001,
-        variance = 0.002^2
-    ),
+    mutationGenerator = generateMutant(invaderPopsize = 0.001, sd = 0.002),
     integrationParams = IntegrationParams(
         maxTime = 1e10,
         algorithm = DynamicSS(RadauIIA5()),

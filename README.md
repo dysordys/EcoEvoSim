@@ -81,7 +81,7 @@ config = EcoEvoConfig(
     # (weighted by its density), we add a normally-distributed variate to its trait
     # with mean zero and standard deviation 0.002, and we initialize the new
     # phenotype with population size 0.001:
-    mutationGenerator = generateMutant(invaderPopsize = 0.001, variance = 0.002^2),
+    mutationGenerator = generateMutant(invaderPopsize = 0.001, sd = 0.002),
     # Integrate each ecological step for 1e12 time units:
     integrationParams = IntegrationParams(maxTime = 1.0e12),
     # Species with pop. size below 0.003 are removed after ecological simulation:
@@ -266,7 +266,7 @@ using EcoEvoSim, OrdinaryDiffEq
 
 config = EcoEvoConfig(
     ecoDyn = lotkaVolterra(growthFn, kernelFn),
-    mutationGenerator = generateMutant(invaderPopsize = 0.001, variance = 0.002^2),
+    mutationGenerator = generateMutant(invaderPopsize = 0.001, sd = 0.002),
     integrationParams = IntegrationParams(maxTime = 100.0, algorithm = KenCarp4()),
     extThreshold = 0.003,
 )

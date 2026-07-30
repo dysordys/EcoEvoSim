@@ -43,7 +43,7 @@ kernelFn(zi, zj) = -exp(-sum((zi .- zj) .^ 2) / (2 * 0.15^2))
 
 config = EcoEvoConfig(
     ecoDyn = lotkaVolterra(growthFn, kernelFn),
-    mutationGenerator = generateMutant(invaderPopsize = 0.001, variance = 0.002^2),
+    mutationGenerator = generateMutant(invaderPopsize = 0.001, sd = 0.002),
     integrationParams = IntegrationParams(maxTime = 1.0e12),
     extThreshold = 0.003,
 )

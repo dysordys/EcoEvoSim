@@ -23,7 +23,8 @@ Initial public release.
   auxiliary-variable dynamics (`auxDynamics`) and a `precompute` hook, plus the
   pre-built `lotkaVolterra` model.
 - Mutant-generation factories `generateMutant`, `generateMutantSpatial`, and
-  `noMutation`. Parent selection is pluggable via the `parentSelection` argument,
+  `noMutation`. The mutational step distribution is given by exactly one of
+  `covMat`, `variance`, or `sd`. Parent selection is pluggable via the `parentSelection` argument,
   which defaults to `weightedRandomSpecies` (density-proportional, so that every
   individual is equally likely to give rise to the mutant); pass `randomSpecies`
   for uniform selection over species, or any `Community -> Int` function of your own.

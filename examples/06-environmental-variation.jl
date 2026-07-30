@@ -49,10 +49,7 @@ nMut = 500 # Number of mutation events
 maxTime = 10 * tau # Many periods
 config = EcoEvoConfig(
     ecoDyn = ecology,
-    mutationGenerator = generateMutant(
-        invaderPopsize = 0.001,
-        variance = 0.015^2
-    ),
+    mutationGenerator = generateMutant(invaderPopsize = 0.001, sd = 0.015),
     integrationParams = IntegrationParams(
         maxTime = maxTime,
         algorithm = AutoVern7(Rodas5()), # Fast, but falls back to stiff Rodas5 if needed
