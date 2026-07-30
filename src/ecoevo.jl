@@ -14,10 +14,10 @@ When used as the `algorithm` in `IntegrationParams`, `ecoDyn` iterates the map
 `u ← f(u, nothing, t)` for up to `maxTime` steps, stopping early when
 `‖u_new − u_old‖ < abstol + reltol * ‖u_old‖`.
 
-The `abstol` and `reltol` tolerances are taken from `solver_options` (defaulting
-to `1e-8` and `1e-6` respectively).  The community time is advanced by one unit
-per step.  Setting `maxTime = Inf` (the natural default) imposes no cap; a finite
-value acts as a safety limit on the number of iterations.
+The `abstol` and `reltol` tolerances are taken from `solver_options` (both defaulting
+to `1e-8`).  The community time is advanced by one unit per step.  Setting
+`maxTime = Inf` (the natural default) imposes no cap; a finite value acts
+as a safety limit on the number of iterations.
 
 Analogous to `DynamicSS()` for continuous-time systems.
 """
@@ -70,14 +70,14 @@ IntegrationParams(maxTime::T, algorithm::Alg, solver_options::NamedTuple) where 
 
 # Convenience constructor with default Rodas5 and common tolerances
 IntegrationParams(maxTime::Real; algorithm::Alg = Rodas5(),
-                  solver_options::NamedTuple = (abstol=1e-8, reltol=1e-6)) where {Alg} =
+                  solver_options::NamedTuple = (abstol=1e-8, reltol=1e-8)) where {Alg} =
     IntegrationParams(float(maxTime), algorithm, solver_options)
 
 # Keyword argument constructor with explicit abstol/reltol (captures any additional kwargs)
 function IntegrationParams(; maxTime::Real,
                             algorithm::Alg = Rodas5(),
                             abstol = 1e-8,
-                            reltol = 1e-6,
+                            reltol = 1e-8,
                             kwargs...) where {Alg}
     T = typeof(float(maxTime))
     solver_options = merge((abstol=convert(T, abstol), reltol=convert(T, reltol)), kwargs)
@@ -273,7 +273,7 @@ function ecoDyn(
         # ‖u_new − u‖ < abstol + reltol * ‖u‖, or until maxTime steps.
         opts = config.integrationParams.solver_options
         abstol_val = TC(get(opts, :abstol, 1e-8))
-        reltol_val = TC(get(opts, :reltol, 1e-6))
+        reltol_val = TC(get(opts, :reltol, 1e-8))
         maxSteps   = isfinite(config.integrationParams.maxTime) ?
                          round(Int, config.integrationParams.maxTime) : typemax(Int)
         u   = copy(u0)
@@ -390,7 +390,7 @@ function ecoDynTimeSeries(
 
     elseif alg isa DiscreteSS
         abstol_val = TC(get(opts, :abstol, 1e-8))
-        reltol_val = TC(get(opts, :reltol, 1e-6))
+        reltol_val = TC(get(opts, :reltol, 1e-8))
         maxSteps   = isfinite(config.integrationParams.maxTime) ?
                          round(Int, config.integrationParams.maxTime) : typemax(Int)
         u      = copy(u0)

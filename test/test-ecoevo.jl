@@ -26,6 +26,16 @@ numTests = 50
         @test params2.solver_options.reltol == 1e-6
         @test params2.solver_options.maxiters == 10000
 
+        # Default tolerances: both abstol and reltol default to 1e-8
+        paramsDefault = IntegrationParams(maxTime=100.0)
+        @test paramsDefault.solver_options.abstol == 1e-8
+        @test paramsDefault.solver_options.reltol == 1e-8
+
+        # Positional convenience constructor uses the same defaults
+        paramsPositional = IntegrationParams(100.0)
+        @test paramsPositional.solver_options.abstol == 1e-8
+        @test paramsPositional.solver_options.reltol == 1e-8
+
         # Invalid: non-positive maxTime
         @test_throws ArgumentError IntegrationParams(maxTime=-1.0, abstol=1e-6, reltol=1e-3)
         @test_throws ArgumentError IntegrationParams(maxTime=0.0, abstol=1e-6, reltol=1e-3)
