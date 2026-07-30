@@ -13,12 +13,10 @@ of a system, plus the traits of the species that can evolve. The system then aut
 the following steps:
 
 0. We start with a community of phenotypes.
-1. The ecological equations are integrated for some specified number of time units
+1. A new mutant is thrown into the community at a low density, and with a trait value
+that is a slight change from a randomly-picked resident's trait.
+2. The ecological equations are integrated for some specified number of time units
 (or until equilibrium is reached).
-2. A new mutant is thrown into the community at a low density, and with a trait value
-that is a slight change from a randomly-picked resident's trait. By default, the
-resident is picked with probability proportional to its density, so that every
-individual is equally likely to give rise to the mutant.
 3. And then we repeat from Step 1, for a specified number of mutation events.
 
 
