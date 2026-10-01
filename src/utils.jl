@@ -39,6 +39,77 @@ finalComm = lastCommunity(evoHistory)
 lastCommunity(h::EvoHistory) = h[end]
 
 
+# Append to evolutionary histories
+
+"""
+    push!(h::EvoHistory, comm::Community) -> EvoHistory
+    append!(h::EvoHistory, other::EvoHistory) -> EvoHistory
+
+Append a single community snapshot (`push!`), or all snapshots of another history
+(`append!`), to the end of `h`, modifying `h` in place. Both return `h`. The numeric
+type and the number of auxiliary variables must match those of `h`.
+
+Several items can be pushed at once: `push!(h, comm1, comm2)`.
+
+No snapshots are dropped: if `other` was started from `lastCommunity(h)`, that
+community will appear twice in the result. Use `filterHistory` to remove it if needed.
+
+See also `vcat` for a non-mutating version.
+
+# Example
+```julia
+history = EvoHistory(comm1)
+push!(history, comm2)
+append!(history, otherHistory)
+```
+"""
+function Base.push!(h::EvoHistory{T, AuxClasses},
+                    comm::Community{T, AuxClasses}) where {T<:Real, AuxClasses}
+    push!(historyList(h), comm)
+    h
+end
+
+Base.push!(h::EvoHistory, comm::Community) = throw(ArgumentError(
+    "cannot push a $(typeof(comm)) onto an $(typeof(h)): the numeric type and " *
+    "number of auxiliary variables must match"
+))
+
+function Base.append!(h::EvoHistory{T, AuxClasses},
+                      other::EvoHistory{T, AuxClasses}) where {T<:Real, AuxClasses}
+    append!(historyList(h), historyList(other))
+    h
+end
+
+Base.append!(h::EvoHistory, other::EvoHistory) = throw(ArgumentError(
+    "cannot append an $(typeof(other)) to an $(typeof(h)): the numeric type and " *
+    "number of auxiliary variables must match"
+))
+
+
+"""
+    vcat(h::EvoHistory, items::Union{EvoHistory, Community}...) -> EvoHistory
+
+Concatenate an evolutionary history with any mix of further histories and single
+community snapshots, in the order given. Returns a new `EvoHistory`; the inputs are
+not modified. The numeric type and the number of auxiliary variables of every item
+must match those of `h`.
+
+# Example
+```julia
+combined = vcat(history1, history2)
+combined = vcat(history1, comm, history2)
+```
+"""
+function Base.vcat(h::EvoHistory{T, AuxClasses},
+                   items::Union{EvoHistory, Community}...) where {T<:Real, AuxClasses}
+    result = EvoHistory{T, AuxClasses}(copy(historyList(h)))
+    for item in items
+        item isa Community ? push!(result, item) : append!(result, item)
+    end
+    result
+end
+
+
 # Filter evolutionary histories
 
 """

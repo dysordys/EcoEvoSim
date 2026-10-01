@@ -976,6 +976,69 @@ numTests = 50
     end
 
 
+    @testset "testing_push_and_append_EvoHistory" begin
+        mkComm(t) = Community([Species(t, rand())], PopulationSize{Float64}[], t)
+        for _ in 1:numTests
+            n, m = rand(1:5), rand(1:5)
+            h1 = EvoHistory([mkComm(float(i)) for i in 1:n])
+            h2 = EvoHistory([mkComm(float(n + i)) for i in 1:m])
+            c = mkComm(float(n + m + 1))
+
+            # append! modifies in place, returns the history, and leaves the other alone
+            @test append!(h1, h2) === h1
+            @test length(h1) == n + m
+            @test length(h2) == m
+            @test [comm.time for comm in h1] == float.(1:(n + m))
+
+            # push! adds a single community, or several at once
+            @test push!(h1, c) === h1
+            @test length(h1) == n + m + 1
+            @test h1[end] === c
+            push!(h1, c, c)
+            @test length(h1) == n + m + 3
+        end
+
+        # Mismatched number of auxiliary variables or numeric type is rejected
+        h = EvoHistory(mkComm(0.0))
+        withAux = Community([Species(1.0, 0.0)], [PopulationSize(1.0)], 0.0)
+        @test_throws ArgumentError push!(h, withAux)
+        @test_throws ArgumentError append!(h, EvoHistory(withAux))
+        @test_throws ArgumentError push!(h, emptyCommunity(Float32))
+        @test length(h) == 1
+    end
+
+
+    @testset "testing_vcat_EvoHistory" begin
+        mkComm(t) = Community([Species(t, rand())], PopulationSize{Float64}[], t)
+        for _ in 1:numTests
+            n, m = rand(1:5), rand(1:5)
+            h1 = EvoHistory([mkComm(float(i)) for i in 1:n])
+            h2 = EvoHistory([mkComm(float(n + 1 + i)) for i in 1:m])
+            c = mkComm(float(n + 1))
+
+            combined = vcat(h1, c, h2)
+            @test combined isa EvoHistory{Float64, 0}
+            @test [comm.time for comm in combined] == float.(1:(n + m + 1))
+
+            # Inputs are not modified, and the result does not alias them
+            @test length(h1) == n
+            @test length(h2) == m
+            push!(combined, c)
+            @test length(h1) == n
+
+            # Single-argument vcat returns an independent copy
+            h1copy = vcat(h1)
+            @test h1copy !== h1
+            @test length(h1copy) == n
+        end
+
+        h = EvoHistory(mkComm(0.0))
+        withAux = Community([Species(1.0, 0.0)], [PopulationSize(1.0)], 0.0)
+        @test_throws ArgumentError vcat(h, withAux)
+        @test_throws ArgumentError vcat(h, mkComm(1.0), EvoHistory(withAux))
+    end
+
+
     @testset "testing_addAux_scalar" begin
         for _ in 1:numTests
             T = Float64
